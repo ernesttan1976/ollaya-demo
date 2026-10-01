@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake / Ollaya Control Room</title>
+  <style>
+    :root {
+      --bg:      oklch(98% 0.005 250);
+      --surface: oklch(100% 0 0);
+      --fg:      oklch(22% 0.02 240);
+      --muted:   oklch(50% 0.018 240);
+      --border:  oklch(90% 0.008 240);
+      --accent:  oklch(58% 0.16 145);
+      --accent-soft: color-mix(in oklch, var(--accent) 14%, transparent);
+      --fg-soft: color-mix(in oklch, var(--fg) 6%, transparent);
+      --font-display: 'Iowan Old Style', 'Charter', Georgia, 'Times New Roman', serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      --radius: 10px;
+      --radius-lg: 16px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+    button { font: inherit; cursor: pointer; }
+     button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    h1, h2, h3, p { margin: 0; text-wrap: balance; }
+    .container { width: min(1440px, calc(100% - 48px)); margin: 0 auto; }
+    .topnav { position: sticky; top: 0; z-index: 10; background: color-mix(in oklch, var(--bg) 94%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+    .topnav-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .logo { font-weight: 700; letter-spacing: -0.03em; }
+    .logo span { font-family: var(--font-mono); color: var(--muted); font-size: 11px; font-weight: 500; margin-left: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+    nav { display: flex; align-items: center; gap: 24px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+    nav a:hover { color: var(--fg); }
+    .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; color: var(--fg); background: var(--surface); font-size: 13px; font-weight: 650; transition: background .16s ease, border-color .16s ease, transform .05s ease; }
+    .btn:hover { background: var(--fg-soft); border-color: var(--fg); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { color: var(--surface); background: var(--accent); border-color: var(--accent); }
+     .btn-primary:hover { color: var(--surface); background: color-mix(in oklch, var(--accent) 88%, var(--fg)); border-color: color-mix(in oklch, var(--accent) 88%, var(--fg)); }
+    .btn-ghost { background: transparent; }
+    .eyebrow { color: var(--accent); font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .page { padding: 56px 0 72px; }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 32px; margin-bottom: 28px; }
+    h1 { max-width: 620px; font-size: clamp(34px, 5vw, 62px); line-height: 1.02; letter-spacing: -.055em; }
+    .intro-copy { max-width: 320px; color: var(--muted); font-size: 14px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); gap: 18px; align-items: stretch; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .game-panel { padding: 18px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .panel-title { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+    .panel-meta { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+    .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+    .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .status.live::before { background: var(--accent); }
+    .board-shell { margin: 18px auto; width: min(100%, 720px); aspect-ratio: 1; padding: 12px; background: color-mix(in oklch, var(--fg) 94%, var(--bg)); border-radius: 12px; }
+    #board { display: block; width: 100%; height: 100%; border: 1px solid color-mix(in oklch, var(--surface) 16%, transparent); background: color-mix(in oklch, var(--fg) 98%, var(--bg)); image-rendering: pixelated; }
+    .game-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .scoreline { display: flex; align-items: baseline; gap: 10px; }
+    .score { font-family: var(--font-mono); font-size: 26px; font-weight: 700; letter-spacing: -.06em; }
+    .score-label { color: var(--muted); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .ollaya-panel { display: flex; flex-direction: column; min-height: 100%; }
+    .ollaya-head { padding: 18px; border-bottom: 1px solid var(--border); }
+    .ollaya-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .ollaya-title h2 { font-size: 20px; letter-spacing: -.04em; }
+    .ollaya-head p { margin-top: 7px; color: var(--muted); font-size: 13px; }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .switch-label { font-size: 13px; font-weight: 650; }
+    .switch-label small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; margin-top: 2px; }
+    .switch { width: 48px; height: 28px; padding: 3px; border: 0; border-radius: 999px; background: color-mix(in oklch, var(--fg) 14%, var(--surface)); transition: background .15s ease; }
+    .switch::after { content: ''; display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px color-mix(in oklch, var(--fg) 22%, transparent); transition: transform .15s ease; }
+    .switch[aria-checked="true"] { background: var(--accent); }
+    .switch[aria-checked="true"]::after { transform: translateX(20px); }
+    .console { flex: 1; display: flex; flex-direction: column; min-height: 360px; padding: 18px; }
+    .console-label { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .09em; }
+    .console-log { flex: 1; overflow: auto; min-height: 210px; max-height: 360px; margin: 12px 0; padding: 4px 0; font-family: var(--font-mono); font-size: 11px; }
+    .log-entry { padding: 9px 0; border-bottom: 1px solid var(--border); }
+    .log-entry:last-child { border-bottom: 0; }
+    .log-entry strong { color: var(--fg); font-weight: 600; }
+    .log-entry span { color: var(--muted); }
+    .log-entry .arrow { color: var(--accent); padding: 0 5px; }
+    .empty-log { color: var(--muted); padding-top: 20px; }
+    .prompt-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .prompt-input { min-height: 44px; width: 100%; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--bg); color: var(--fg); font: 12px var(--font-mono); }
+    .prompt-input::placeholder { color: var(--muted); }
+    .readout { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-top: 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+     .readout-item { padding: 14px 16px; border-right: 1px solid var(--border); }
+    .readout-item:last-child { border-right: 0; }
+    .readout-key { color: var(--muted); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .readout-value { margin-top: 4px; font-family: var(--font-mono); font-size: 14px; font-weight: 650; }
+     .note { display: flex; justify-content: space-between; gap: 16px; margin-top: 24px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+     .rules-section { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 18px; margin-top: 18px; }
+     .rules-panel, .history-panel { padding: 18px; }
+     .rules-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+     .rules-head h2 { font-size: 20px; letter-spacing: -.04em; }
+     .rules-head p { margin-top: 6px; color: var(--muted); font-size: 12px; }
+     .version-badge { flex: none; color: var(--accent); font: 11px var(--font-mono); }
+     .rules-editor { width: 100%; min-height: 290px; margin-top: 14px; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; resize: vertical; background: color-mix(in oklch, var(--fg) 96%, var(--surface)); color: var(--surface); font: 12px/1.65 var(--font-mono); tab-size: 2; }
+     .rules-editor:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+     .rules-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+     .rules-message { color: var(--muted); font: 11px var(--font-mono); }
+     .history-list { margin-top: 14px; }
+     .history-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+     .history-row button { border: 0; padding: 0; background: transparent; color: var(--fg); text-align: left; font: 12px var(--font-mono); }
+     .history-row button:hover { color: var(--accent); }
+      .history-row small { display: block; margin-top: 3px; color: var(--muted); font: 11px var(--font-body); }
+       .history-row .meta { color: var(--muted); font-size: 10px; }
+       .calculations-section { margin-top: 18px; }
+       .calculations-panel { padding: 18px; }
+       .calculations-editor { min-height: 340px; }
+       .calculations-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr); gap: 18px; margin-top: 14px; }
+       .calculations-output { min-height: 340px; padding: 14px; background: color-mix(in oklch, var(--fg) 96%, var(--surface)); color: var(--surface); border-radius: var(--radius); overflow: auto; font: 11px/1.65 var(--font-mono); white-space: pre-wrap; }
+       .calculation-history { margin-top: 14px; }
+      .death-review { display: none; margin-top: 18px; padding: 18px; border: 1px solid var(--accent); border-radius: var(--radius-lg); background: color-mix(in oklch, var(--accent) 5%, var(--surface)); }
+      .death-review.is-visible { display: block; }
+      .death-review-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+      .death-review h2 { font-size: 20px; letter-spacing: -.04em; }
+      .death-review p { margin-top: 6px; color: var(--muted); font-size: 12px; }
+      .death-review-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+      .death-review .textarea { min-height: 92px; background: var(--surface); }
+       .death-review-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+       .death-review-status { color: var(--muted); font: 11px var(--font-mono); }
+       .evolution-stream { display: none; max-height: 180px; margin-top: 14px; padding: 12px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in oklch, var(--fg) 96%, var(--surface)); color: var(--surface); white-space: pre-wrap; font: 11px/1.6 var(--font-mono); }
+       .evolution-stream.is-visible { display: block; }
+      footer { padding: 22px 0 32px; border-top: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+       @media (max-width: 920px) { .workspace, .rules-section, .calculations-layout { grid-template-columns: 1fr; } .ollaya-panel { min-height: 500px; } }
+     @media (max-width: 620px) { .container { width: min(100% - 28px, 1440px); } nav { display: none; } .page { padding-top: 32px; } .intro { display: block; } .intro-copy { margin-top: 16px; } .readout { grid-template-columns: repeat(2, 1fr); } .readout-item:nth-child(2) { border-right: 0; } .readout-item:nth-child(-n+2) { border-bottom: 1px solid var(--border); } .prompt-form, .death-review-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topnav" data-od-id="topnav">
+    <div class="container topnav-inner">
+      <div class="logo" data-od-id="brand">SNAKE <span>/ OLLAYA LAB</span></div>
+      <nav aria-label="Primary navigation"><a href="#game">Game</a><a href="#console">Ollaya console</a><a href="#controls">Controls</a></nav>
+      <button class="btn btn-primary" id="startButton" data-od-id="start-game">Start game</button>
+    </div>
+  </header>
+
+  <main class="container page" id="content">
+    <section class="intro" data-od-id="intro">
+      <div><p class="eyebrow">Interactive control room · v1.0</p><h1 data-od-id="page-title">Classic Snake, with a second brain.</h1></div>
+      <p class="intro-copy">Play with your keyboard, or let Ollaya read the board and choose the next move. Every request and response stays visible in the console.</p>
+    </section>
+
+    <section class="workspace" data-od-id="game-workspace" id="game">
+      <div class="panel game-panel" data-od-id="game-panel">
+        <div class="panel-head"><div><div class="panel-title" data-od-id="playfield-title">PLAYFIELD / 16 × 16</div><div class="panel-meta">LOCAL SESSION <span id="sessionId">SNK-0001</span></div></div><div class="status" id="gameStatus">Ready</div></div>
+        <div class="board-shell"><canvas id="board" width="512" height="512" aria-label="Snake game board"></canvas></div>
+         <div class="game-actions"><div class="scoreline"><span class="score" id="score">000</span><span class="score-label">score</span></div><div class="status" id="modeStatus">Ollaya mode</div><button class="btn btn-ghost" id="resetButton" data-od-id="reset-game">Reset</button></div>
+      </div>
+
+      <aside class="panel ollaya-panel" id="console" data-od-id="ollaya-console">
+          <div class="ollaya-head"><div class="ollaya-title"><h2 data-od-id="ollaya-title">Ollaya input / output</h2><div class="status" id="ollayaStatus">Listening</div></div><p>Each live decision is sent to the Ollaya bridge. Its selected direction is applied on the next tick.</p><div class="switch-row"><div class="switch-label">Ollaya control<small id="switchHelp">Ollaya chooses every tick</small></div><button class="switch" id="ollayaSwitch" role="switch" aria-checked="true" aria-label="Toggle Ollaya control" data-od-id="ollaya-toggle"></button></div><div class="switch-row" data-od-id="safety-rules"><div class="switch-label">Safety rules<small>Food pursuit weighted · walls/body blocked</small></div><div class="status live">Protected</div></div></div>
+         <div class="console"><div class="console-label"><span>Decision stream</span><span id="decisionCount">0 events</span></div><div class="console-log" id="consoleLog"><div class="empty-log">No decisions yet. Start a game or ask Ollaya for a move.</div></div><form class="prompt-form" id="promptForm"><input class="prompt-input" id="promptInput" aria-label="Ollaya prompt" placeholder="Ask: choose my next move" /><button class="btn" type="submit" data-od-id="ask-ollaya">Ask Ollaya</button></form></div>
+      </aside>
+    </section>
+
+    <section class="readout" id="controls" data-od-id="telemetry">
+      <div class="readout-item"><div class="readout-key">Input</div><div class="readout-value" id="inputReadout">Ollaya</div></div>
+      <div class="readout-item"><div class="readout-key">Direction</div><div class="readout-value" id="directionReadout">RIGHT</div></div>
+      <div class="readout-item"><div class="readout-key">Tick rate</div><div class="readout-value">8 / sec</div></div>
+       <div class="readout-item"><div class="readout-key">Body length</div><div class="readout-value" id="lengthReadout">03 units</div></div>
+       <div class="readout-item"><div class="readout-key">Freedom after food bias</div><div class="readout-value" id="planReadout">awaiting move</div></div>
+    </section>
+        <div class="note"><span>Keyboard: arrows or WASD · Space pauses</span><span>Move control: live Ollaya API · Rule evolution: GPT-5.6 Luna</span></div>
+
+       <section class="rules-section" data-od-id="rules-workspace">
+        <div class="panel rules-panel" data-od-id="rules-editor-panel">
+          <div class="rules-head"><div><h2>rules.json</h2><p>Edit the planner contract, then save a new version. The local server reads <span class="num">OPENAI_API_KEY</span> from <span class="num">.env</span> and keeps it off the page.</p></div><span class="version-badge" id="rulesVersion">v1.0.0</span></div>
+         <textarea class="rules-editor" id="rulesEditor" spellcheck="false" aria-label="Editable rules JSON"></textarea>
+          <div class="rules-actions"><span class="rules-message" id="rulesMessage">Loaded active rules · live engine</span><button class="btn btn-primary" id="saveRulesButton" data-od-id="save-rules">Save new version</button></div>
+       </div>
+       <aside class="panel history-panel" data-od-id="rules-history">
+          <div class="panel-head"><div><div class="panel-title">RULE EVOLUTION</div><div class="panel-meta">DEATH → GPT-5.6 LUNA → VERSION</div></div><div class="status" id="evolutionStatus">Idle</div></div>
+         <div class="history-list" id="historyList"></div>
+       </aside>
+       </section>
+
+       <section class="panel calculations-panel calculations-section" data-od-id="calculations-workspace">
+          <div class="rules-head"><div><h2>snake-calculations.js</h2><p>Edit the live scoring source loaded after rules.json. Ollaya receives the ranked move calculations shown at right.</p></div><span class="version-badge" id="calculationsVersion">v1.0.0</span></div>
+         <div class="calculations-layout">
+           <div><textarea class="rules-editor calculations-editor" id="calculationsEditor" spellcheck="false" aria-label="Editable calculations JavaScript"></textarea><div class="rules-actions"><span class="rules-message" id="calculationsMessage">Loaded active calculations · live runtime</span><button class="btn btn-primary" id="saveCalculationsButton" data-od-id="save-calculations">Save calculations version</button></div></div>
+           <div><div class="console-label"><span>Ollaya derived input</span><span>state + rules + calculations</span></div><pre class="calculations-output" id="calculationOutput">Waiting for next decision.</pre><div class="calculation-history" id="calculationHistory"></div></div>
+         </div>
+       </section>
+
+       <section class="death-review" id="deathReview" data-od-id="death-review" aria-live="polite">
+        <div class="death-review-head"><div><p class="eyebrow">Run ended · human review</p><h2>What should the player learn from this death?</h2><p>Describe the failure and your proposed fix before asking GPT-5.6 Luna to evolve the active rules.</p></div><span class="version-badge" id="deathReviewVersion">from v1.0.0</span></div>
+        <div class="death-review-grid">
+          <div class="field"><label for="deathReason">Why did you die?</label><textarea class="textarea" id="deathReason" data-od-id="death-reason" placeholder="Example: I chased food into a corridor and boxed myself in."></textarea></div>
+          <div class="field"><label for="deathSolution">What could be the solution?</label><textarea class="textarea" id="deathSolution" data-od-id="death-solution" placeholder="Example: Penalize moves that reduce reachable space near the food."></textarea></div>
+        </div>
+         <div class="death-review-actions"><span class="death-review-status" id="deathReviewStatus">Waiting for your analysis</span><button class="btn btn-primary" id="evolveRulesButton" data-od-id="ask-ai-evolve" type="button">Ask AI to evolve rules</button></div><pre class="evolution-stream" id="evolutionStream" aria-live="polite"></pre>
+      </section>
+    </main>
+  <footer><div class="container">Built for observable play · Inputs and outputs are intentionally inspectable</div></footer>
+
+   <script src="snake-calculations.js"></script>
+   <script src="snake-rules-engine.js"></script>
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const grid = 16;
+    const cell = canvas.width / grid;
+     const defaultRules = { version: '1.0.0', planner: { foodWeight: 100, freedomWeight: 1 }, safety: { avoidWall: true, avoidBody: true }, evolution: { enabled: true, provider: 'openai', model: 'gpt-5.6-luna', endpoint: window.SNAKE_EVOLUTION_ENDPOINT || '/api/evolve-rules', onDeath: true } };
+      const state = { grid, snake: [{x: 7, y: 8}, {x: 6, y: 8}, {x: 5, y: 8}], food: {x: 12, y: 8}, direction: 'RIGHT', nextDirection: 'RIGHT', score: 0, playing: false, paused: false, ollaya: true, ollayaPending: false, tick: 0, decisions: 0, freedomScore: 0, pendingDeath: null, rules: structuredClone(defaultRules), history: [structuredClone(defaultRules)], calculationsVersion: '1.0.0', calculationsSource: window.SnakeCalculations.source, calculationsHistory: [{ version: '1.0.0', source: window.SnakeCalculations.source }] };
+    const vectors = { UP: {x: 0, y: -1}, DOWN: {x: 0, y: 1}, LEFT: {x: -1, y: 0}, RIGHT: {x: 1, y: 0} };
+     const opposites = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
+     const $ = (id) => document.getElementById(id);
+      function formatRules() { $('rulesEditor').value = JSON.stringify(state.rules, null, 2); $('rulesVersion').textContent = `v${state.rules.version}`; }
+      function formatCalculations() { $('calculationsEditor').value = state.calculationsSource; $('calculationsVersion').textContent = `v${state.calculationsVersion}`; }
+      function renderHistory() { $('historyList').innerHTML = state.history.slice().reverse().map((rules, index) => `<div class="history-row"><button type="button" data-version="${rules.version}">v${rules.version}<small>${rules.version === state.rules.version ? 'active rules' : 'archived snapshot'}</small></button><span class="meta">${rules.version === state.rules.version ? 'ACTIVE' : `REV ${state.history.length - index}`}</span></div>`).join(''); }
+      function renderCalculationHistory() { $('calculationHistory').innerHTML = state.calculationsHistory.slice().reverse().map((item, index) => `<div class="history-row"><button type="button" data-calculation-version="${item.version}">v${item.version}<small>${item.version === state.calculationsVersion ? 'active calculations' : 'archived source'}</small></button><span class="meta">${item.version === state.calculationsVersion ? 'ACTIVE' : `REV ${state.calculationsHistory.length - index}`}</span></div>`).join(''); }
+      function bumpVersion(version) { const parts = version.split('.').map(Number); return `${parts[0] || 1}.${parts[1] || 0}.${(parts[2] || 0) + 1}`; }
+       function evaluateCalculations(source) { try { const sandbox = { ...window }; new Function('window', source)(sandbox); return sandbox.SnakeCalculations; } catch (fileError) { return new Function(source)(); } }
+       function activateCalculations(source, version) { const api = evaluateCalculations(source); if (!api || typeof api.choose !== 'function' || typeof api.safeDirections !== 'function' || typeof api.buildInput !== 'function') throw new Error('snake-calculations.js must expose choose, safeDirections, and buildInput'); window.SnakeCalculations = {...window.SnakeCalculations, ...api, VERSION: version, source}; window.SnakeRulesEngine.choose = (...args) => window.SnakeCalculations.choose(...args); window.SnakeRulesEngine.safeDirections = (...args) => window.SnakeCalculations.safeDirections(...args); window.SnakeRulesEngine.buildInput = (...args) => window.SnakeCalculations.buildInput(...args); state.calculationsSource = source; state.calculationsVersion = version; }
+       function saveCalculations(source = 'manual') { try { const nextVersion = bumpVersion(state.calculationsVersion); activateCalculations($('calculationsEditor').value, nextVersion); state.calculationsHistory.push({ version: nextVersion, source: state.calculationsSource }); formatCalculations(); renderCalculationHistory(); $('calculationsMessage').textContent = source === 'gpt-5.6-luna' ? 'GPT-5.6 Luna calculations activated' : 'Saved as new calculations version'; } catch (error) { $('calculationsMessage').textContent = `JavaScript error: ${error.message}`; } }
+       async function loadCalculationsFile() { try { const response = await fetch('snake-calculations.js', { cache: 'no-store' }); if (!response.ok) throw new Error(`HTTP ${response.status}`); const source = await response.text(); activateCalculations(source, state.calculationsVersion); state.calculationsHistory[0].source = source; formatCalculations(); renderCalculationHistory(); $('calculationsMessage').textContent = 'Loaded snake-calculations.js · live runtime'; } catch (error) { formatCalculations(); $('calculationsMessage').textContent = `Using embedded calculations · ${error.message}`; } }
+       function snapshotState() { return { grid: state.grid, snake: state.snake.map(part => ({...part})), food: {...state.food}, direction: state.direction, nextDirection: state.nextDirection, score: state.score, playing: state.playing, paused: state.paused, ollaya: state.ollaya, tick: state.tick, decisions: state.decisions, freedomScore: state.freedomScore, pendingDeath: state.pendingDeath ? {...state.pendingDeath} : null }; }
+       function saveRules(source = 'manual') { try { const candidate = JSON.parse($('rulesEditor').value); if (!candidate.planner || !candidate.safety || !candidate.evolution) throw new Error('planner, safety, and evolution are required'); candidate.version = bumpVersion(state.rules.version); state.rules = candidate; state.history.push(structuredClone(candidate)); formatRules(); renderHistory(); $('rulesMessage').textContent = source === 'gpt-5.6-luna' ? 'GPT-5.6 Luna rules activated' : 'Saved as new version'; } catch (error) { $('rulesMessage').textContent = `JSON error: ${error.message}`; } }
+    const randomFood = () => { let food; do { food = {x: Math.floor(Math.random() * grid), y: Math.floor(Math.random() * grid)}; } while (state.snake.some(part => part.x === food.x && part.y === food.y)); return food; };
+    function draw() {
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim(); ctx.fillRect(0, 0, canvas.width, canvas.height);
+       ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim(); ctx.lineWidth = 1;
+      for (let i = 1; i < grid; i++) { ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, canvas.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(canvas.width, i * cell); ctx.stroke(); }
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(); ctx.fillRect(state.food.x * cell + 9, state.food.y * cell + 9, cell - 18, cell - 18);
+      state.snake.forEach((part, index) => { ctx.fillStyle = index === 0 ? getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() : getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(); ctx.fillRect(part.x * cell + 4, part.y * cell + 4, cell - 8, cell - 8); });
+    }
+    function logDecision(input, output, reason) { state.decisions++; $('decisionCount').textContent = `${state.decisions} event${state.decisions === 1 ? '' : 's'}`; const row = document.createElement('div'); row.className = 'log-entry'; row.innerHTML = `<strong>IN</strong> ${input}<span class="arrow">→</span><strong>OUT</strong> ${output}<br><span>${reason}</span>`; const empty = $('consoleLog').querySelector('.empty-log'); if (empty) empty.remove(); $('consoleLog').prepend(row); }
+    function setDirection(direction, source = 'keyboard') { if (direction !== opposites[state.direction] && direction !== state.direction) { state.nextDirection = direction; $('directionReadout').textContent = direction; $('inputReadout').textContent = source === 'ollaya' ? 'Ollaya' : 'Arrow keys'; } }
+      function isSafeMove(direction) { return SnakeRulesEngine.safeDirections(state).includes(direction); }
+      function safeDirections() { return SnakeRulesEngine.safeDirections(state); }
+      function choosePlannedMove(preferred) { const result = SnakeRulesEngine.choose(state, preferred); state.freedomScore = result.freedom; $('planReadout').textContent = `${state.freedomScore} cells`; return result.direction; }
+      async function askOllaya(prompt = 'choose my next move') { if (state.ollayaPending) return; const head = state.snake[0]; const dx = state.food.x - head.x; const dy = state.food.y - head.y; let preferred = state.direction; if (Math.abs(dx) > Math.abs(dy)) preferred = dx > 0 ? 'RIGHT' : 'LEFT'; else if (dy !== 0) preferred = dy > 0 ? 'DOWN' : 'UP'; const ollayaInput = SnakeRulesEngine.buildInput(state, preferred); const localPlan = SnakeRulesEngine.choose(state, preferred); state.freedomScore = localPlan.freedom; $('planReadout').textContent = `${localPlan.freedom} cells`; $('calculationOutput').textContent = JSON.stringify(ollayaInput, null, 2); state.ollayaPending = true; $('ollayaStatus').textContent = 'Requesting'; logDecision(`"${prompt}"`, 'pending', `POST /api/ollaya-move · ${ollayaInput.safeDirections.length} legal directions`); try { const response = await fetch('/api/ollaya-move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, input: ollayaInput, state: snapshotState(), rules: state.rules, calculations: { version: state.calculationsVersion, source: state.calculationsSource } }) }); const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.error || `Ollaya returned HTTP ${response.status}`); const direction = String(result.direction || '').toUpperCase(); if (!ollayaInput.safeDirections.includes(direction)) throw new Error(`Ollaya selected unsafe direction: ${direction || 'none'}`); if (state.playing) setDirection(direction, 'ollaya'); $('ollayaStatus').textContent = 'Responded'; logDecision('Ollaya', direction, `live response · ${result.endpoint || '/api/ollaya-move'}`); } catch (error) { $('ollayaStatus').textContent = 'Unavailable'; logDecision('Ollaya', 'error', error.message); } finally { state.ollayaPending = false; } }
+           async function requestRuleEvolution(payload) { const adapter = window.OpenAI?.evolveRules || window.openai?.evolveRules; if (typeof adapter === 'function') return adapter(payload); const endpoint = state.rules.evolution.endpoint || window.SNAKE_EVOLUTION_ENDPOINT; if (!endpoint) throw new Error('No OpenAI adapter or backend endpoint is configured'); const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); const result = await response.json().catch(() => ({})); if (response.status === 404) throw new Error(`No backend route was found at ${endpoint}. Configure window.OpenAI.evolveRules or deploy a POST ${endpoint} proxy to GPT-5.6 Luna.`); if (!response.ok) throw new Error(result.error || `Evolution endpoint returned HTTP ${response.status}`); return result.rules || result; }
+            async function evolveRulesAfterDeath() { if (!state.pendingDeath || !state.rules.evolution.enabled || !state.rules.evolution.onDeath) return; const payload = { event: 'game_over', reason: state.pendingDeath.message, model: state.rules.evolution.model, userReflection: { whyDied: $('deathReason').value.trim(), proposedSolution: $('deathSolution').value.trim() }, rules: structuredClone(state.rules), calculations: { version: state.calculationsVersion, source: state.calculationsSource }, ollayaInput: $('calculationOutput').textContent, run: { score: state.score, ticks: state.tick, length: state.snake.length }, board: { grid, head: state.snake[0], food: state.food } }; $('evolveRulesButton').disabled = true; $('deathReviewStatus').textContent = 'Sending rules.json and calculations.js to Luna'; $('evolutionStatus').textContent = 'Sending to Luna'; logDecision(JSON.stringify({ event: payload.event, version: payload.rules.version, calculations: payload.calculations.version, score: payload.run.score, reflection: true }), 'GPT-5.6 Luna', `POST ${payload.rules.evolution.endpoint || window.SNAKE_EVOLUTION_ENDPOINT}`); try { const evolved = await requestRuleEvolution(payload); if (!evolved || typeof evolved !== 'object' || !evolved.planner || !evolved.safety || !evolved.evolution) throw new Error('Response did not contain a valid rules object'); $('rulesEditor').value = JSON.stringify(evolved, null, 2); saveRules('gpt-5.6-luna'); if (typeof evolved.calculationsSource === 'string') { $('calculationsEditor').value = evolved.calculationsSource; saveCalculations('gpt-5.6-luna'); } state.pendingDeath = null; $('deathReview').classList.remove('is-visible'); $('evolutionStatus').textContent = 'Evolved'; logDecision(`v${state.rules.version} / calc v${state.calculationsVersion}`, 'activated', `GPT-5.6 Luna · rules.json + calculations.js`); } catch (error) { $('evolveRulesButton').disabled = false; $('deathReviewStatus').textContent = `Request failed: ${error.message}`; $('evolutionStatus').textContent = 'Request failed'; logDecision('GPT-5.6 Luna', 'not sent', error.message); } }
+      function endGame(message) { state.playing = false; state.pendingDeath = { message, score: state.score, version: state.rules.version }; $('gameStatus').textContent = message; $('startButton').textContent = 'Restart game'; $('ollayaStatus').textContent = 'Standby'; $('deathReviewVersion').textContent = `from v${state.rules.version}`; $('deathReviewStatus').textContent = 'Waiting for your analysis'; $('evolveRulesButton').disabled = false; $('deathReview').classList.add('is-visible'); }
+       function tick() { if (!state.playing || state.paused) return; const attempted = { x: state.snake[0].x + vectors[state.nextDirection].x, y: state.snake[0].y + vectors[state.nextDirection].y }; if (attempted.x < 0 || attempted.x >= grid || attempted.y < 0 || attempted.y >= grid) { endGame('Hit border'); draw(); return; } if (!isSafeMove(state.nextDirection)) { const safe = safeDirections(); if (safe.length) { state.nextDirection = choosePlannedMove(safe[0]); $('directionReadout').textContent = state.nextDirection; } else { endGame('No safe move'); draw(); return; } } state.direction = state.nextDirection; const head = {...state.snake[0]}; head.x += vectors[state.direction].x; head.y += vectors[state.direction].y; state.snake.unshift(head); if (head.x === state.food.x && head.y === state.food.y) { state.score += 10; state.food = randomFood(); } else state.snake.pop(); state.tick++; if (state.ollaya) askOllaya('choose my next move'); $('score').textContent = String(state.score).padStart(3, '0'); $('lengthReadout').textContent = `${String(state.snake.length).padStart(2, '0')} units`; draw(); }
+       function startGame() { state.snake = [{x: 7, y: 8}, {x: 6, y: 8}, {x: 5, y: 8}]; state.food = {x: 12, y: 8}; state.direction = 'RIGHT'; state.nextDirection = 'RIGHT'; state.score = 0; state.tick = 0; state.freedomScore = 0; state.pendingDeath = null; state.playing = true; state.paused = false; $('deathReview').classList.remove('is-visible'); $('gameStatus').textContent = 'Live'; $('gameStatus').classList.add('live'); $('startButton').textContent = 'Restart game'; $('score').textContent = '000'; $('lengthReadout').textContent = '03 units'; $('planReadout').textContent = 'awaiting move'; draw(); if (state.ollaya) askOllaya('take control'); }
+      $('startButton').addEventListener('click', startGame); $('resetButton').addEventListener('click', startGame); $('saveRulesButton').addEventListener('click', () => saveRules()); $('saveCalculationsButton').addEventListener('click', () => saveCalculations()); $('evolveRulesButton').addEventListener('click', evolveRulesAfterDeath); $('historyList').addEventListener('click', (event) => { const version = event.target.closest('[data-version]')?.dataset.version; const snapshot = state.history.find(rules => rules.version === version); if (snapshot) { state.rules = structuredClone(snapshot); formatRules(); renderHistory(); $('rulesMessage').textContent = `Loaded v${version}`; } }); $('calculationHistory').addEventListener('click', (event) => { const version = event.target.closest('[data-calculation-version]')?.dataset.calculationVersion; const snapshot = state.calculationsHistory.find(item => item.version === version); if (snapshot) { activateCalculations(snapshot.source, snapshot.version); formatCalculations(); renderCalculationHistory(); $('calculationsMessage').textContent = `Loaded calculations v${version}`; } });
+     $('ollayaSwitch').addEventListener('click', () => { state.ollaya = !state.ollaya; $('ollayaSwitch').setAttribute('aria-checked', state.ollaya); $('switchHelp').textContent = state.ollaya ? 'Ollaya chooses every tick' : 'Manual steering is active'; $('modeStatus').textContent = state.ollaya ? 'Ollaya mode' : 'Keyboard mode'; $('ollayaStatus').textContent = state.ollaya ? 'Listening' : 'Standby'; if (state.ollaya && state.playing) askOllaya('take control'); });
+    $('promptForm').addEventListener('submit', (event) => { event.preventDefault(); const prompt = $('promptInput').value.trim() || 'choose my next move'; $('promptInput').value = ''; if (!state.playing) startGame(); $('ollayaStatus').textContent = 'Thinking'; window.setTimeout(() => askOllaya(prompt), 160); });
+    window.addEventListener('keydown', (event) => { const keys = {ArrowUp: 'UP', w: 'UP', ArrowDown: 'DOWN', s: 'DOWN', ArrowLeft: 'LEFT', a: 'LEFT', ArrowRight: 'RIGHT', d: 'RIGHT'}; if (keys[event.key]) { event.preventDefault(); setDirection(keys[event.key]); } if (event.code === 'Space') { state.paused = !state.paused; $('gameStatus').textContent = state.paused ? 'Paused' : 'Live'; } });
+       formatRules(); renderHistory(); formatCalculations(); renderCalculationHistory(); $('ollayaSwitch').setAttribute('aria-checked', 'true'); $('modeStatus').textContent = 'Ollaya mode'; draw(); window.setInterval(tick, 125);
+      const requestRuleEvolutionWithState = requestRuleEvolution;
+      requestRuleEvolution = async function (payload) {
+        payload.files = {
+          'rules.json': structuredClone(state.rules),
+          'snake-calculations.js': { version: state.calculationsVersion, source: state.calculationsSource }
+        };
+        payload.state = snapshotState();
+        return requestRuleEvolutionWithState(payload);
+      };
+      requestRuleEvolution = async function (payload) {
+        payload.files = { 'rules.json': structuredClone(state.rules), 'snake-calculations.js': { version: state.calculationsVersion, source: state.calculationsSource } };
+        payload.state = snapshotState();
+        const endpoint = state.rules.evolution.endpoint || window.SNAKE_EVOLUTION_ENDPOINT;
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson, application/json' }, body: JSON.stringify(payload) });
+        if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || `Evolution endpoint returned HTTP ${response.status}`); }
+        if (!response.body) { const result = await response.json(); return result.rules || result; }
+        $('evolutionStream').textContent = '';
+        $('evolutionStream').classList.add('is-visible');
+        $('deathReviewStatus').textContent = 'Streaming response from Luna';
+        $('evolutionStatus').textContent = 'Streaming';
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let rules = null;
+        const consume = chunk => { buffer += decoder.decode(chunk, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''; lines.forEach(line => { if (!line.trim()) return; const event = JSON.parse(line); if (event.type === 'delta') { $('evolutionStream').textContent += event.text; $('evolutionStream').scrollTop = $('evolutionStream').scrollHeight; } if (event.type === 'done') rules = event.rules; if (event.type === 'error') throw new Error(event.error); }); };
+        while (true) { const { value, done } = await reader.read(); if (done) break; consume(value); }
+        if (buffer.trim()) consume(new Uint8Array());
+        if (!rules) throw new Error('Evolution stream ended without rules JSON');
+        return rules;
+      };
+    </script>
+   <script>loadCalculationsFile();</script>
+</body>
+</html>

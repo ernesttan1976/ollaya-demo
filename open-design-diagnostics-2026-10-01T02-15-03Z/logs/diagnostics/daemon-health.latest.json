@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "bootId": "5ff1e380-888a-4387-8fce-fc9383d6496f",
+  "pid": 18710,
+  "startedAt": 1790818889639,
+  "updatedAt": 1790820869619,
+  "appVersion": "0.24.1",
+  "runtime": {
+    "node": "24.15.0",
+    "electron": "41.3.0",
+    "v8": "14.6.202.33-electron.0"
+  },
+  "state": "running",
+  "exitCode": null,
+  "heapLimit": 4294967296,
+  "samples": [
+    {
+      "at": 1790820629622,
+      "heapUsed": 38737956,
+      "heapLimit": 4294967296,
+      "totalAvailable": 4257638120,
+      "largeObject": 6488596,
+      "oldSpace": 21047772,
+      "external": 17444020,
+      "arrayBuffers": 0,
+      "malloced": 540716,
+      "rss": 98779136
+    },
+    {
+      "at": 1790820689621,
+      "heapUsed": 38634612,
+      "heapLimit": 4294967296,
+      "totalAvailable": 4257217136,
+      "largeObject": 6488596,
+      "oldSpace": 21064556,
+      "external": 17442462,
+      "arrayBuffers": 0,
+      "malloced": 540716,
+      "rss": 99008512
+    },
+    {
+      "at": 1790820749620,
+      "heapUsed": 38564676,
+      "heapLimit": 4294967296,
+      "totalAvailable": 4258073448,
+      "largeObject": 6488596,
+      "oldSpace": 21079004,
+      "external": 17439778,
+      "arrayBuffers": 0,
+      "malloced": 540716,
+      "rss": 98418688
+    },
+    {
+      "at": 1790820809620,
+      "heapUsed": 38503684,
+      "heapLimit": 4294967296,
+      "totalAvailable": 4258134364,
+      "largeObject": 6488596,
+      "oldSpace": 21095496,
+      "external": 17452104,
+      "arrayBuffers": 0,
+      "malloced": 540716,
+      "rss": 99745792
+    },
+    {
+      "at": 1790820869618,
+      "heapUsed": 39168836,
+      "heapLimit": 4294967296,
+      "totalAvailable": 4256682752,
+      "largeObject": 6488596,
+      "oldSpace": 21104012,
+      "external": 17450283,
+      "arrayBuffers": 0,
+      "malloced": 540716,
+      "rss": 97648640
+    }
+  ],
+  "peaks": {
+    "heapUsedRatio": 0.015003473497927189,
+    "heapUsed": 64439428,
+    "largeObject": 16981096,
+    "rss": 220200960,
+    "external": 25142784,
+    "eventLoopDelayMaxMs": 177.471487,
+    "eventLoopDelayP99Ms": 24.117247,
+    "majorGcCount": 14,
+    "gcRetainedRatioMax": 0.00913278292864561,
+    "sampleCount": 34
+  },
+  "topReads": [
+    {
+      "op": "project_run_statuses",
+      "rootOp": "project_run_statuses",
+      "durationMs": 0,
+      "heapDelta": 329996,
+      "rows": 1
+    },
+    {
+      "op": "conversation_messages",
+      "rootOp": "conversation_messages",
+      "durationMs": 1,
+      "heapDelta": 149140,
+      "rows": 12
+    },
+    {
+      "op": "conversation_messages",
+      "rootOp": "conversation_messages",
+      "durationMs": 1,
+      "heapDelta": 121936,
+      "rows": 10
+    },
+    {
+      "op": "conversation_messages",
+      "rootOp": "conversation_messages",
+      "durationMs": 0,
+      "heapDelta": 117564,
+      "rows": 10
+    },
+    {
+      "op": "conversation_messages",
+      "rootOp": "conversation_messages",
+      "durationMs": 0,
+      "heapDelta": 85748,
+      "rows": 8
+    }
+  ],
+  "inflight": null,
+  "storage": {
+    "pageSize": 4096,
+    "pageCount": 149,
+    "freelistCount": 0,
+    "mainBytes": 4096,
+    "walBytes": 1668632
+  },
+  "pendingReports": []
+}

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ollaya File Watcher</title>
+  <style>
+    :root {
+      --bg: oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg: oklch(18% 0.012 250);
+      --muted: oklch(54% 0.012 250);
+      --border: oklch(92% 0.005 250);
+      --accent: oklch(58% 0.18 255);
+      --accent-soft: oklch(96% 0.035 255);
+      --success: oklch(54% 0.14 150);
+      --success-soft: oklch(95% 0.04 150);
+      --warn: oklch(60% 0.14 75);
+      --warn-soft: oklch(96% 0.04 85);
+      --danger: oklch(56% 0.15 25);
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--fg); background: var(--bg); font-family: var(--font-body); font-size: 14px; line-height: 1.5; }
+    button { font: inherit; color: inherit; }
+    button:focus-visible, [tabindex]:focus-visible { outline: 3px solid color-mix(in oklch, var(--accent) 35%, transparent); outline-offset: 3px; }
+    .app-shell { min-height: 100vh; }
+    .topbar { height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 34px; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--surface) 88%, transparent); backdrop-filter: blur(14px); position: sticky; top: 0; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 600; letter-spacing: -0.01em; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: var(--fg); color: var(--surface); }
+    .brand-mark svg { width: 16px; height: 16px; }
+    .brand small { display: block; color: var(--muted); font-size: 11px; font-weight: 450; letter-spacing: 0.01em; }
+    .top-actions { display: flex; align-items: center; gap: 18px; }
+    .watch-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
+    .live-dot.off { background: var(--muted); box-shadow: none; }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--fg); background: oklch(93% 0.015 250); font-size: 11px; font-weight: 600; }
+    .layout { max-width: 1440px; margin: 0 auto; padding: 34px 34px 48px; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+    .eyebrow { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 8px; font-family: var(--font-display); font-size: clamp(29px, 3vw, 42px); line-height: 1.08; letter-spacing: -0.025em; font-weight: 650; }
+    .intro { max-width: 570px; margin-bottom: 0; color: var(--muted); font-size: 15px; }
+    .primary { min-height: 44px; padding: 0 17px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: .02em; transition: transform .16s ease, background .16s ease; }
+    .primary:hover { transform: translateY(-1px); background: oklch(50% 0.18 255); }
+    .primary:active { transform: translateY(1px); }
+    .secondary { min-height: 40px; padding: 0 13px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 560; }
+    .secondary:hover { border-color: oklch(75% 0.01 250); background: oklch(98% 0.002 250); }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    .metric { padding: 18px 20px; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; }
+    .metric-label { color: var(--muted); font-size: 12px; }
+    .metric-value { margin: 5px 0 3px; font-family: var(--font-display); font-size: 25px; line-height: 1.1; letter-spacing: -0.02em; font-weight: 650; }
+    .metric-note { color: var(--muted); font-size: 11px; }
+    .metric-note.good { color: var(--success); }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.34fr) minmax(320px, .8fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 17px 20px; border-bottom: 1px solid var(--border); }
+    .panel-title { margin: 0; font-size: 14px; font-weight: 620; letter-spacing: -0.01em; }
+    .panel-subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .filter-row { display: flex; gap: 7px; padding: 13px 20px; border-bottom: 1px solid var(--border); }
+    .filter { border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; padding: 6px 9px; font-size: 11px; font-weight: 600; }
+    .filter.active { background: var(--accent-soft); color: var(--accent); }
+    .event-list { list-style: none; padding: 0; margin: 0; }
+    .event { width: 100%; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 16px 20px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface); text-align: left; cursor: pointer; }
+    .event:last-child { border-bottom: 0; }
+    .event:hover { background: oklch(99% 0.003 250); }
+    .event.selected { background: oklch(98% 0.008 250); box-shadow: inset 3px 0 0 var(--accent); }
+    .file-icon { width: 32px; height: 36px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); background: oklch(99% 0.001 250); }
+    .file-icon svg { width: 17px; height: 17px; }
+    .event-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+    .event-meta { display: flex; gap: 7px; color: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+    .event-time { color: var(--muted); font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
+    .badge { display: inline-flex; align-items: center; min-height: 21px; padding: 0 7px; border-radius: 5px; font-size: 10px; font-weight: 600; }
+    .badge.organize { background: var(--success-soft); color: var(--success); }
+    .badge.review { background: var(--warn-soft); color: var(--warn); }
+    .badge.ignored { background: oklch(96% 0.003 250); color: var(--muted); }
+    .trace { min-height: 100%; }
+    .trace-body { padding: 20px; }
+    .trace-file { display: flex; align-items: center; gap: 12px; padding-bottom: 19px; border-bottom: 1px solid var(--border); }
+    .trace-file .file-icon { width: 38px; height: 42px; }
+    .trace-file-name { overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+    .trace-file-path { margin-top: 2px; color: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+    .decision-label { margin: 20px 0 8px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+    .decision { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; }
+    .decision strong { font-size: 16px; letter-spacing: -0.02em; }
+    .confidence { color: var(--success); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+    .confidence.low { color: var(--warn); }
+    .probabilities { margin-top: 15px; }
+    .prob-row { display: grid; grid-template-columns: 84px 1fr 40px; gap: 9px; align-items: center; margin: 10px 0; color: var(--muted); font-size: 11px; }
+    .prob-track { height: 5px; border-radius: 5px; background: oklch(94% 0.004 250); overflow: hidden; }
+    .prob-fill { height: 100%; border-radius: inherit; background: var(--fg); }
+    .prob-fill.top { background: var(--accent); }
+    .prob-value { color: var(--fg); font-family: var(--font-mono); text-align: right; font-size: 10px; }
+    .trace-log { margin: 20px 0 0; padding: 14px 0 0; border-top: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 10px; line-height: 1.7; }
+    .trace-log span { color: var(--fg); }
+    .trace-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .trace-actions .primary { flex: 1; }
+    .rules { margin-top: 18px; }
+    .rule-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border); }
+    .rule-row:last-child { border-bottom: 0; }
+    .rule-name { font-size: 12px; font-weight: 600; }
+    .rule-path { margin-top: 3px; color: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+    .switch { width: 37px; height: 22px; padding: 2px; border: 0; border-radius: 20px; background: oklch(86% 0.006 250); cursor: pointer; }
+    .switch::after { content: ''; display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: transform .16s ease; box-shadow: 0 1px 3px oklch(20% 0 0 / .18); }
+    .switch.on { background: var(--success); }
+    .switch.on::after { transform: translateX(15px); }
+    .footer-note { margin-top: 22px; color: var(--muted); font-size: 11px; }
+    .footer-note code { padding: 2px 4px; border-radius: 4px; background: oklch(96% 0.003 250); font-family: var(--font-mono); font-size: 10px; }
+    @media (max-width: 900px) { .topbar { padding: 0 20px; } .layout { padding: 26px 20px 40px; } .page-head { align-items: flex-start; flex-direction: column; } .metrics { grid-template-columns: repeat(2, 1fr); } .workspace { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .brand small, .watch-state span { display: none; } .top-actions { gap: 11px; } .metrics { gap: 8px; } .metric { padding: 14px; } .metric-value { font-size: 21px; } .panel-head, .filter-row, .event, .rule-row { padding-left: 14px; padding-right: 14px; } .event { grid-template-columns: 32px minmax(0, 1fr); } .event-time { grid-column: 2; } .trace-body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" data-od-id="top-navigation">
+      <div class="brand" data-od-id="brand-mark">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12a7 7 0 0 1 12.1-4.8M19 12a7 7 0 0 1-12.1 4.8M17 4v3h-3M7 20v-3h3"/></svg></div>
+        <div>Ollaya <small>System 1 / File Watcher</small></div>
+      </div>
+      <div class="top-actions">
+        <div class="watch-state" data-od-id="watch-status"><span class="live-dot" id="liveDot"></span><span id="watchLabel">Watching 3 folders</span></div>
+        <div class="avatar" aria-label="Account">ER</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="page-head" data-od-id="page-introduction">
+        <div><p class="eyebrow">Semantic reflex layer / demo</p><h1>Keep your files in motion.</h1><p class="intro">Ollaya watches for new and moved files, chooses a safe semantic action, and holds unfamiliar cases for review.</p></div>
+        <button class="primary" id="simulateBtn" data-od-id="simulate-event">Simulate file event</button>
+      </section>
+
+      <section class="metrics" data-od-id="watcher-metrics" aria-label="Watcher metrics">
+        <article class="metric" data-od-id="metric-watched"><div class="metric-label">Files watched</div><div class="metric-value" id="filesWatched">1,284</div><div class="metric-note">across 3 folders</div></article>
+        <article class="metric" data-od-id="metric-organized"><div class="metric-label">Organized today</div><div class="metric-value" id="organizedCount">47</div><div class="metric-note good">+ 12% from yesterday</div></article>
+        <article class="metric" data-od-id="metric-review"><div class="metric-label">Needs review</div><div class="metric-value" id="reviewCount">3</div><div class="metric-note">low confidence or novel</div></article>
+        <article class="metric" data-od-id="metric-policy"><div class="metric-label">Policy version</div><div class="metric-value">v0.8.2</div><div class="metric-note">last updated 18 min ago</div></article>
+      </section>
+
+      <div class="workspace">
+        <section class="panel" data-od-id="event-inbox">
+          <div class="panel-head"><div><h2 class="panel-title">Recent file events</h2><p class="panel-subtitle">Structured input arriving from your folders</p></div><span class="badge organize" id="eventLiveBadge">Live demo</span></div>
+          <div class="filter-row" role="tablist" aria-label="Event filters"><button class="filter active" data-filter="all">All events</button><button class="filter" data-filter="organize">Organized</button><button class="filter" data-filter="review">Review</button></div>
+          <ul class="event-list" id="eventList"></ul>
+        </section>
+
+        <aside class="panel trace" data-od-id="decision-trace">
+          <div class="panel-head"><div><h2 class="panel-title">Decision trace</h2><p class="panel-subtitle">Why Ollaya chose this action</p></div><span class="badge" id="traceBadge">System 1</span></div>
+          <div class="trace-body" id="traceBody"></div>
+        </aside>
+      </div>
+
+      <section class="panel rules" data-od-id="watch-rules">
+        <div class="panel-head"><div><h2 class="panel-title">Watch rules</h2><p class="panel-subtitle">Boundaries for the fast loop</p></div><button class="secondary" id="addRuleBtn" data-od-id="add-watch-rule">Add rule</button></div>
+        <div class="rule-row"><div><div class="rule-name">Downloads → Inbox</div><div class="rule-path">~/Downloads/*  →  ~/Inbox</div></div><button class="switch on" aria-label="Toggle Downloads rule" data-rule="downloads"></button></div>
+        <div class="rule-row"><div><div class="rule-name">Screenshots → Reference</div><div class="rule-path">~/Desktop/Screen Shot*  →  ~/Reference</div></div><button class="switch on" aria-label="Toggle Screenshots rule" data-rule="screenshots"></button></div>
+        <div class="rule-row"><div><div class="rule-name">Project exports → Archive</div><div class="rule-path">~/Projects/*/export/*  →  ~/Archive</div></div><button class="switch" aria-label="Toggle Project exports rule" data-rule="exports"></button></div>
+      </section>
+      <p class="footer-note">This is a scripted showcase of the decision loop. No files are moved. Every action can be reviewed before execution. <code>state → score → action → feedback</code></p>
+    </main>
+  </div>
+  <script>
+    const events = [
+      { id: 'quarterly-notes', name: 'quarterly-notes.pdf', path: '~/Downloads', time: 'Just now', action: 'Organize', destination: '~/Documents/Reports', confidence: 0.96, type: 'organize', features: [['Extension', 'PDF'], ['Source', 'Downloads'], ['Name signal', 'quarterly + notes']] },
+      { id: 'screen-4821', name: 'Screen Shot 2026-10-01 at 09.42.18.png', path: '~/Desktop', time: '2 min ago', action: 'Organize', destination: '~/Reference/Screenshots', confidence: 0.91, type: 'organize', features: [['Extension', 'PNG'], ['Source', 'Desktop'], ['Name signal', 'Screen Shot']] },
+      { id: 'export-final', name: 'client-export-final.zip', path: '~/Projects/atlas/export', time: '8 min ago', action: 'Review', destination: '~/Archive', confidence: 0.58, type: 'review', features: [['Extension', 'ZIP'], ['Source', 'Project export'], ['Name signal', 'final + export']] },
+      { id: 'invoice', name: 'invoice_1048.pdf', path: '~/Downloads', time: '19 min ago', action: 'Organize', destination: '~/Documents/Finance', confidence: 0.88, type: 'organize', features: [['Extension', 'PDF'], ['Source', 'Downloads'], ['Name signal', 'invoice']] }
+    ];
+    let selectedId = events[0].id;
+    let filter = 'all';
+    const $ = (selector) => document.querySelector(selector);
+    const esc = (value) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
+    function icon() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3.5h8l4 4V20.5H6z"/><path d="M14 3.5v4h4M9 12h6M9 15.5h6"/></svg>'; }
+    function renderEvents() {
+      const visible = events.filter((event) => filter === 'all' || event.type === filter);
+      $('#eventList').innerHTML = visible.map((event) => `<li><button class="event ${event.id === selectedId ? 'selected' : ''}" data-event-id="${event.id}"><span class="file-icon">${icon()}</span><span><span class="event-name">${esc(event.name)}</span><span class="event-meta"><span>${esc(event.path)}</span><span>·</span><span>${event.action}</span></span></span><span class="event-time">${event.time}</span></button></li>`).join('');
+      document.querySelectorAll('[data-event-id]').forEach((button) => button.addEventListener('click', () => { selectedId = button.dataset.eventId; renderEvents(); renderTrace(); }));
+    }
+    function renderTrace() {
+      const event = events.find((item) => item.id === selectedId);
+      const low = event.confidence < .7;
+      $('#traceBadge').className = `badge ${low ? 'review' : 'organize'}`;
+      $('#traceBadge').textContent = low ? 'System 2 handoff' : 'System 1';
+      const bars = [['Organize', event.confidence], ['Leave in place', low ? .26 : .03], ['Review', low ? .16 : .01]];
+      $('#traceBody').innerHTML = `<div class="trace-file"><span class="file-icon">${icon()}</span><div><div class="trace-file-name">${esc(event.name)}</div><div class="trace-file-path">${esc(event.path)}</div></div></div><div class="decision-label">Selected action</div><div class="decision"><strong>${event.action}</strong><span class="confidence ${low ? 'low' : ''}">${Math.round(event.confidence * 100)}% confidence</span></div><div class="probabilities">${bars.map((bar, index) => `<div class="prob-row"><span>${bar[0]}</span><span class="prob-track"><span class="prob-fill ${index === 0 ? 'top' : ''}" style="width:${Math.round(bar[1] * 100)}%"></span></span><span class="prob-value">${Math.round(bar[1] * 100)}%</span></div>`).join('')}</div><div class="trace-log">input: <span>file_event</span><br>policy: <span>organize-v0.8.2</span><br>features: <span>${event.features.map((item) => item[0].toLowerCase().replace(' ', '_')).join(', ')}</span><br>route: <span>${low ? 'escalate_for_review' : 'fast_loop'}</span></div><div class="trace-actions"><button class="primary" id="confirmBtn">${low ? 'Review with System 2' : 'Confirm organization'}</button><button class="secondary" id="skipBtn">Skip</button></div>`;
+      $('#confirmBtn').addEventListener('click', () => { event.action = low ? 'Queued' : 'Organized'; event.type = low ? 'review' : 'organize'; event.time = 'Just now'; if (!low) { $('#organizedCount').textContent = String(Number($('#organizedCount').textContent) + 1); } renderEvents(); renderTrace(); });
+      $('#skipBtn').addEventListener('click', () => { event.action = 'Ignored'; event.type = 'ignored'; renderEvents(); renderTrace(); });
+    }
+    document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => { filter = button.dataset.filter; document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item === button)); renderEvents(); }));
+    $('#simulateBtn').addEventListener('click', () => { const id = `new-${Date.now()}`; events.unshift({ id, name: 'untitled-brief.docx', path: '~/Downloads', time: 'Just now', action: 'Review', destination: '~/Documents', confidence: 0.47, type: 'review', features: [['Extension', 'DOCX'], ['Source', 'Downloads'], ['Name signal', 'unresolved']] }); selectedId = id; $('#filesWatched').textContent = String(Number($('#filesWatched').textContent.replace(',', '')) + 1).replace(/\B(?=(\d{3})+(?!\d))/g, ','); $('#reviewCount').textContent = String(Number($('#reviewCount').textContent) + 1); renderEvents(); renderTrace(); });
+    $('#addRuleBtn').addEventListener('click', () => { $('#addRuleBtn').textContent = 'Rule noted'; setTimeout(() => $('#addRuleBtn').textContent = 'Add rule', 1300); });
+    document.querySelectorAll('.switch').forEach((button) => button.addEventListener('click', () => { button.classList.toggle('on'); const enabled = document.querySelectorAll('.switch.on').length; $('#watchLabel').textContent = enabled ? `Watching ${enabled} folders` : 'Watcher paused'; $('#liveDot').classList.toggle('off', enabled === 0); }));
+    renderEvents(); renderTrace();
+  </script>
+</body>
+</html>

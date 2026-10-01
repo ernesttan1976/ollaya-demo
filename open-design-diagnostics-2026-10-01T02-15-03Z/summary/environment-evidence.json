@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-01T02:15:07.668Z",
+  "limits": {
+    "failures": 100,
+    "bytes": 262144,
+    "sampleIntervalMs": 60000,
+    "flushIntervalMs": 60000
+  },
+  "coverage": {
+    "actualNetworkRoute": "not-observed",
+    "vpn": "not-determined",
+    "workspaceContext": "last-daemon-response-not-browser-selection",
+    "failureEnvironment": "cached-sample-at-or-before-failure; null-means-not-yet-sampled",
+    "persistence": "periodic-checkpoint",
+    "droppedGroups": 0,
+    "environmentCollection": "settled"
+  },
+  "directory": null,
+  "context": null,
+  "environments": [
+    {
+      "sampledAt": "2026-10-01T02:15:07.655Z",
+      "status": "collected",
+      "systemProxy": {
+        "http": {
+          "configured": false
+        },
+        "https": {
+          "configured": false
+        },
+        "all": {
+          "configured": false
+        },
+        "noProxy": {
+          "configured": false,
+          "wildcard": false,
+          "fingerprint": null
+        },
+        "nodeUseEnvProxy": false
+      },
+      "pacConfigured": false,
+      "daemonProxy": {
+        "http": {
+          "configured": false
+        },
+        "https": {
+          "configured": false
+        },
+        "all": {
+          "configured": false
+        },
+        "noProxy": {
+          "configured": false,
+          "wildcard": false,
+          "fingerprint": null
+        },
+        "nodeUseEnvProxy": false
+      },
+      "interfaces": {
+        "ipv4": 1,
+        "ipv6": 9
+      }
+    }
+  ],
+  "failures": []
+}

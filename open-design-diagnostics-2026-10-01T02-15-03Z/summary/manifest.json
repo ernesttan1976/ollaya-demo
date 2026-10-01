@@ -1,0 +1,100 @@
+{
+  "exportedAt": "2026-10-01T02:15:07.703Z",
+  "app": {
+    "name": "open-design",
+    "version": "0.24.1",
+    "channel": "stable",
+    "packaged": true
+  },
+  "source": "daemon-http",
+  "namespace": "release-stable",
+  "files": [
+    {
+      "name": "logs/daemon/latest.log",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/daemon/latest.log",
+      "bytes": 3474
+    },
+    {
+      "name": "logs/web/latest.log",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/web/latest.log",
+      "bytes": 280
+    },
+    {
+      "name": "logs/desktop/latest.log",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/desktop/latest.log",
+      "bytes": 9468
+    },
+    {
+      "name": "logs/desktop/renderer.log",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/desktop/renderer.log",
+      "bytes": 0,
+      "error": "ENOENT: no such file or directory, stat '/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/desktop/renderer.log'"
+    },
+    {
+      "name": "logs/desktop/gpu-info.json",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/desktop/gpu-info.json",
+      "bytes": 1510
+    },
+    {
+      "name": "runs/efcc9ed7-5b82-44cb-bbca-d55c76b136a5/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/efcc9ed7-5b82-44cb-bbca-d55c76b136a5/events.jsonl",
+      "bytes": 9559
+    },
+    {
+      "name": "runs/c5d526f3-2db7-400c-9fb3-ac8151289982/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/c5d526f3-2db7-400c-9fb3-ac8151289982/events.jsonl",
+      "bytes": 14784
+    },
+    {
+      "name": "runs/4db836a7-c77e-4ee5-ac0a-48a2c53b07b0/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/4db836a7-c77e-4ee5-ac0a-48a2c53b07b0/events.jsonl",
+      "bytes": 6239
+    },
+    {
+      "name": "runs/d6761e2e-7349-44ae-be7f-39fea7fb3116/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/d6761e2e-7349-44ae-be7f-39fea7fb3116/events.jsonl",
+      "bytes": 4650
+    },
+    {
+      "name": "runs/d092b967-d149-4a31-a34b-afb5c64d2cbb/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/d092b967-d149-4a31-a34b-afb5c64d2cbb/events.jsonl",
+      "bytes": 4679
+    },
+    {
+      "name": "runs/1b7fc027-7fe3-428f-9b3b-fc36e6348e78/events.jsonl",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/runs/1b7fc027-7fe3-428f-9b3b-fc36e6348e78/events.jsonl",
+      "bytes": 5148
+    },
+    {
+      "name": "agent-cli-logs/opencode/opencode.log",
+      "absolutePath": "/Users/<USER>/.local/share/opencode/log/opencode.log",
+      "bytes": 2097086
+    },
+    {
+      "name": "logs/diagnostics/daemon-health.latest.json",
+      "absolutePath": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/data/diagnostics/daemon-health.json",
+      "bytes": 2270
+    }
+  ],
+  "warnings": [
+    "Per-run event logs may contain conversation content and artifact excerpts. Review the bundle before sharing it.",
+    "logs/desktop/renderer.log: ENOENT: no such file or directory, stat '/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/logs/desktop/renderer.log'"
+  ],
+  "extra": {
+    "runtimeAvailable": true,
+    "sourceTag": "packaged",
+    "mode": "runtime",
+    "base": "/Users/<USER>/Library/Application Support/Open Design/namespaces/release-stable/runtime",
+    "projectRoot": "/Applications/Open Design.app/Contents/Resources/app/prebundled",
+    "browserUse": {
+      "registryPath": "/var/folders/nl/q3jw6w0d27s8cc805rhh74xr0000gn/T/codex-browser-use",
+      "registryExists": false,
+      "socketCount": 0,
+      "candidateCount": 0,
+      "staleCount": 0,
+      "currentSessionIdPresent": null,
+      "probeFailureCategory": "registry-missing",
+      "staleThresholdMs": 600000
+    }
+  }
+}
