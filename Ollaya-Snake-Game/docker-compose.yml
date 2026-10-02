@@ -1,6 +1,8 @@
 services:
   snake-game:
     build: .
+    env_file:
+      - .env
     ports:
       - "${PORT:-8787}:${PORT:-8787}"
     environment:
