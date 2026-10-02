@@ -14,7 +14,7 @@ This archive is the source of truth for turning the design into production code.
 - HTML screens detected: 1
 - Stylesheets detected: 0
 - Script/component files detected: 3
-- Supporting assets detected: 0
+- Supporting assets detected: 1
 
 ## Responsive contract
 Validate the implementation across this 2025–2026 viewport matrix:
@@ -74,7 +74,7 @@ For responsive web exports, treat these as a modern breakpoint system for one ad
 - `snake-rules-engine.js`
 
 ## Assets and supporting files
-- None detected
+- `Screenshot-2026-10-01-at-5.13.57-PM.png`
 
 ## Coding checklist for AI tools
 1. Inspect `snake-ollaya.html` and `DESIGN-MANIFEST.json` first and identify reusable components before coding.

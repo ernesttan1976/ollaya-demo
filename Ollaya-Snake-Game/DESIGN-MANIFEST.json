@@ -4,6 +4,7 @@
   "entryFile": "snake-ollaya.html",
   "sourceFiles": {
     "all": [
+      "Screenshot-2026-10-01-at-5.13.57-PM.png",
       "server.js",
       "snake-calculations.js",
       "snake-ollaya.html",
@@ -18,7 +19,9 @@
       "snake-calculations.js",
       "snake-rules-engine.js"
     ],
-    "assets": []
+    "assets": [
+      "Screenshot-2026-10-01-at-5.13.57-PM.png"
+    ]
   },
   "screens": [
     {

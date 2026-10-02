@@ -24,7 +24,7 @@ function loadEnv() {
 }
 
 const envLoaded = loadEnv();
-const ollayaUrl = process.env.OLLAYA_API_URL || 'http://127.0.0.1:62762/v1/decide';
+const ollayaUrl = process.env.OLLAYA_API_URL || 'http://127.0.0.1:11435/v1/systemone';
 
 function sendJson(response, status, body) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -43,6 +43,13 @@ function readJson(request) {
     });
     request.on('error', reject);
   });
+}
+
+function normalizeMode(mode, state) {
+  if (mode === 'tail') return state.pressure >= 0.7 && state.tail_reachable === true ? 'tail' : 'food';
+  if (mode === 'space') return state.pressure >= 0.45 && state.food_safe !== true ? 'space' : 'food';
+  if (mode === 'cycle') return state.cycle_safe === true ? 'cycle' : 'food';
+  return mode;
 }
 
 async function evolveRules(request, response) {
@@ -126,32 +133,49 @@ async function askOllaya(request, response) {
 
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.OLLAYA_API_TOKEN) headers.Authorization = `Bearer ${process.env.OLLAYA_API_TOKEN}`;
+  const incomingState = payload.state && typeof payload.state === 'object' ? payload.state : {};
+  const incomingTactical = incomingState.tactical || {};
+  const incomingFood = incomingState.food || {};
+  const state = {
+    food_safe: incomingState.food_safe ?? incomingFood.safe === true,
+    pressure: Number(incomingState.pressure ?? incomingTactical.pressure ?? 0),
+    tail_reachable: incomingState.tail_reachable ?? incomingTactical.tail_reachable === true,
+    cycle_safe: incomingState.cycle_safe ?? incomingTactical.cycle_safe === true,
+    trap_risk: Number(incomingState.trap_risk ?? incomingTactical.trap_risk ?? 0)
+  };
+  const modeCriteria = {
+    food: 'Default mode: pursue food using the safest legal route.',
+    tail: 'Use only when reachable space is very tight; follow the tail to preserve mobility.',
+    space: 'Last-resort mode only when food and tail strategies are not suitable and a clearly larger open region is necessary. Prefer open space, but never continue toward or into a wall.',
+     cycle: 'Maintain the current heading when legal. If the current heading reaches a wall or body, choose a legal alternate; never continue into a collision.'
+  };
+  const suppliedQuestions = payload.questions && typeof payload.questions === 'object' ? payload.questions : {};
+   const questions = {
+        mode: { ...(suppliedQuestions.mode || {}), type: 'choice', instructions: 'Choose exactly one mode. Prefer food unless the tactical indicators show survival risk. Return only the mode.', criteria: modeCriteria }
+   };
   try {
     const upstream = await fetch(ollayaUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         model: process.env.OLLAYA_MODEL || 'laya',
-        state: {
-          prompt: payload.prompt,
-          input: payload.input,
-          gameState: payload.state,
-          rules: payload.rules,
-          calculations: payload.calculations
-        },
-        questions: [{
-          id: 'direction',
-          type: 'choice',
-          question: 'Choose the next legal Snake direction using the supplied ranked moves.',
-          options: payload.input?.safeDirections || []
-        }]
+        state,
+        questions
       })
     });
     const result = await upstream.json().catch(() => ({}));
     if (!upstream.ok) return sendJson(response, upstream.status, { error: result.error || `Ollaya returned HTTP ${upstream.status}` });
-    const direction = result.direction || result.answer || result.choice || result.chosen || result.answers?.direction?.answer || result.answers?.direction?.chosen || result.answers?.[0]?.answer;
-    if (!direction) return sendJson(response, 502, { error: 'Ollaya returned no direction', raw: result });
-    sendJson(response, 200, { direction: String(direction).toUpperCase(), raw: result, endpoint: ollayaUrl });
+    const extractChoice = value => {
+      if (typeof value === 'string') return value;
+      if (!value || typeof value !== 'object') return '';
+      return value.choice || value.answer || value.chosen || value.value || value.label || value.direction || '';
+    };
+    const allowedModes = Object.keys(modeCriteria);
+    const rawMode = extractChoice(result.mode) || extractChoice(result.answer) || extractChoice(result.choice) || extractChoice(result.answers?.mode) || extractChoice(result.result) || extractChoice(result.selected) || extractChoice(result.output);
+     const mode = String(rawMode).toLowerCase().replace(/\s+/g, '_');
+     if (!allowedModes.includes(mode)) return sendJson(response, 502, { error: `Ollaya returned invalid mode: ${rawMode || 'none'}`, raw: result });
+     const normalizedMode = normalizeMode(mode, state);
+     sendJson(response, 200, { mode: normalizedMode, raw: result, endpoint: ollayaUrl });
   } catch (error) {
     sendJson(response, 502, { error: `Ollaya request failed: ${error.message}`, endpoint: ollayaUrl });
   }
