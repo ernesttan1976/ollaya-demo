@@ -1,0 +1,14 @@
+services:
+  snake-game:
+    build: .
+    ports:
+      - "${PORT:-8787}:${PORT:-8787}"
+    environment:
+      PORT: ${PORT:-8787}
+      OLLAYA_API_URL: ${OLLAYA_API_URL:-http://host.docker.internal:11435/v1/systemone}
+      OLLAYA_API_TOKEN: ${OLLAYA_API_TOKEN:-}
+      OLLAYA_MODEL: ${OLLAYA_MODEL:-laya}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

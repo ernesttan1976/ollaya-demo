@@ -7,6 +7,10 @@
     RIGHT: { UP: -1, DOWN: 1 },
     UP: { LEFT: -1, RIGHT: 1 }
   };
+  const cycleOrder = {
+    clockwise: ['UP', 'RIGHT', 'DOWN', 'LEFT'],
+    counterclockwise: ['UP', 'LEFT', 'DOWN', 'RIGHT']
+  };
   const cellKey = (cell) => `${cell.x},${cell.y}`;
   const nextCell = (head, direction) => ({ x: head.x + vectors[direction].x, y: head.y + vectors[direction].y });
   const inside = (cell, grid) => cell.x >= 0 && cell.x < grid && cell.y >= 0 && cell.y < grid;
@@ -75,6 +79,14 @@
 
   function distanceToFood(cell, food) { return Math.abs(food.x - cell.x) + Math.abs(food.y - cell.y); }
   function borderDistance(state, cell) { return Math.min(cell.x, cell.y, state.grid - 1 - cell.x, state.grid - 1 - cell.y); }
+
+  function oppositeCycleDirection(state, legalDirections) {
+    const order = cycleOrder[state.cycleWinding === 'counterclockwise' ? 'counterclockwise' : 'clockwise'];
+    const currentIndex = order.indexOf(String(state.direction || '').toUpperCase());
+    if (currentIndex < 0) return legalDirections[0] || '';
+    const opposite = order[(currentIndex - 1 + order.length) % order.length];
+    return legalDirections.includes(opposite) ? opposite : legalDirections[0] || '';
+  }
 
   const borderDirections = { TOP: 'RIGHT', RIGHT: 'DOWN', BOTTOM: 'LEFT', LEFT: 'UP' };
   const clockwiseSide = { TOP: 'RIGHT', RIGHT: 'BOTTOM', BOTTOM: 'LEFT', LEFT: 'TOP' };
@@ -237,6 +249,10 @@
     const foodSafe = Boolean(bestFoodMove && bestFoodMove.space_ratio >= 0.3 && bestFoodMove.escape_routes >= 2 && !bestFoodMove.dead_end);
     const tailSafe = moveValues.some(move => move.tail_reachable && move.space_ratio >= 0.3);
     const spacePressure = Number(Math.min(1, Math.max(0, (1 - space) + Math.max(0, 2 - escapeRoutes) * 0.2)).toFixed(3));
+    const spaceModeThreshold = 0.7;
+    const spaceMode = spacePressure >= spaceModeThreshold;
+    const spaceDirection = spaceMode ? oppositeCycleDirection(state, legalDirections) : '';
+    if (spaceDirection) Object.entries(moves).forEach(([direction, move]) => { move.space_ratio = direction.toUpperCase() === spaceDirection ? 1 : 0; });
     return {
       snake: { length: state.snake.length },
       food: { safe: foodSafe, distance: foodDistance },
@@ -246,6 +262,9 @@
         escape_routes: escapeRoutes,
         escape_trend: Number(state.escapeTrend || 0),
         pressure: spacePressure,
+        space_mode: spaceMode,
+        space_mode_threshold: spaceModeThreshold,
+        space_direction: spaceDirection,
         tail_reachable: tailSafe,
         cycle_safe: legalDirections.length > 0,
         trap_risk: Number(Math.min(1, spacePressure + (escapeRoutes <= 1 ? 0.35 : 0)).toFixed(3))
@@ -295,13 +314,14 @@
     'const vectors = ' + JSON.stringify(vectors) + ';',
      'const opposites = ' + JSON.stringify(opposites) + ';',
      'const turnDelta = ' + JSON.stringify(turnDelta) + ';',
+     'const cycleOrder = ' + JSON.stringify(cycleOrder) + ';',
      'const borderDirections = ' + JSON.stringify(borderDirections) + ';',
      'const clockwiseSide = ' + JSON.stringify(clockwiseSide) + ';',
     'const cellKey = ' + cellKey.toString() + ';',
     'const nextCell = ' + nextCell.toString() + ';',
     'const inside = ' + inside.toString() + ';',
     'const contains = ' + contains.toString() + ';',
-             updateTurnState, projectedCw, project, safeDirections, floodFill, regionStats, futureTurnOptions, distanceToFood, borderDistance, nearestBorderSide, startBorderCircuit, isOnBorder, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
+              updateTurnState, projectedCw, project, safeDirections, floodFill, regionStats, futureTurnOptions, distanceToFood, borderDistance, oppositeCycleDirection, nearestBorderSide, startBorderCircuit, isOnBorder, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
         'return { choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress };'
   ].map(part => typeof part === 'string' ? part : part.toString()).join('\n\n');
    window.SnakeCalculations = { VERSION: '1.0.0', choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress, source };

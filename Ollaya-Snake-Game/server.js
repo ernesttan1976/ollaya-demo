@@ -46,8 +46,8 @@ function readJson(request) {
 }
 
 function normalizeMode(mode, state) {
-  if (mode === 'tail') return state.pressure >= 0.7 && state.tail_reachable === true ? 'tail' : 'food';
-  if (mode === 'space') return state.pressure >= 0.45 && state.food_safe !== true ? 'space' : 'food';
+  if (state.pressure >= 0.7) return state.tail_reachable === true ? 'tail' : 'space';
+  if (mode === 'space') return 'food';
   if (mode === 'cycle') return state.cycle_safe === true ? 'cycle' : 'food';
   return mode;
 }
@@ -139,6 +139,7 @@ async function askOllaya(request, response) {
   const state = {
     food_safe: incomingState.food_safe ?? incomingFood.safe === true,
     pressure: Number(incomingState.pressure ?? incomingTactical.pressure ?? 0),
+    space_mode: Number(incomingState.pressure ?? incomingTactical.pressure ?? 0) >= 0.7,
     tail_reachable: incomingState.tail_reachable ?? incomingTactical.tail_reachable === true,
     cycle_safe: incomingState.cycle_safe ?? incomingTactical.cycle_safe === true,
     trap_risk: Number(incomingState.trap_risk ?? incomingTactical.trap_risk ?? 0)
@@ -146,7 +147,7 @@ async function askOllaya(request, response) {
   const modeCriteria = {
     food: 'Default mode: pursue food using the safest legal route.',
     tail: 'Use only when reachable space is very tight; follow the tail to preserve mobility.',
-    space: 'Last-resort mode only when food and tail strategies are not suitable and a clearly larger open region is necessary. Prefer open space, but never continue toward or into a wall.',
+     space: 'Use only when pressure is 0.7 or higher and tail access is unavailable. Turn opposite the fixed cycle winding to open space; never continue toward or into a wall.',
      cycle: 'Maintain the current heading when legal. If the current heading reaches a wall or body, choose a legal alternate; never continue into a collision.'
   };
   const suppliedQuestions = payload.questions && typeof payload.questions === 'object' ? payload.questions : {};

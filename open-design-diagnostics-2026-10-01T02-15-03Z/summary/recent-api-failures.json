@@ -1,5 +1,0 @@
-{
-  "retainedLimit": 100,
-  "privacy": "Request bodies, query strings, messages, credentials, and resource identifiers are not recorded.",
-  "failures": []
-}
