@@ -37,11 +37,28 @@
 
   function safeDirections(state) {
     const safety = state.rules.safety || {};
-    return Object.keys(vectors).filter(direction => {
+    const legal = Object.keys(vectors).filter(direction => {
       if (direction === opposites[state.direction]) return false;
       const next = nextCell(state.snake[0], direction);
       return (safety.avoidWall !== false ? inside(next, state.grid) : true) && (safety.avoidBody !== false ? !contains(state.snake, next) : true);
     });
+    if (!legal.length) return legal;
+
+    const measured = legal.map(direction => {
+      const projected = project(state, direction);
+      return {
+        direction,
+        reachable: floodFill(projected.next, projected.body, state.grid).size,
+        minimumReachable: minimumReachableSpace(state, projected.body.length)
+      };
+    });
+    const spaceSafe = measured.filter(move => move.reachable >= move.minimumReachable);
+    if (spaceSafe.length) return spaceSafe.map(move => move.direction);
+
+    // If the target is impossible this turn, keep the option(s) that preserve
+    // the largest connected open region instead of returning no moves.
+    const largestRegion = Math.max(...measured.map(move => move.reachable));
+    return measured.filter(move => move.reachable === largestRegion).map(move => move.direction);
   }
 
   function floodFill(start, body, grid, maxDepth = Infinity) {
@@ -58,6 +75,15 @@
       });
     }
     return visited;
+  }
+
+  function minimumReachableSpaceRatio(state) {
+    const configuredRatio = Number(state.rules?.planner?.minimumReachableSpaceRatio);
+    return Number.isFinite(configuredRatio) ? Math.max(1, configuredRatio) : 1.5;
+  }
+
+  function minimumReachableSpace(state, snakeLength) {
+    return Math.ceil(snakeLength * minimumReachableSpaceRatio(state));
   }
 
   function regionStats(start, body, grid, depth) {
@@ -180,12 +206,15 @@
     const planner = state.rules.planner || {};
     const safety = state.rules.safety || {};
     const projected = project(state, direction);
-    const depth = Math.max(1, Number(planner.lookaheadDepth) || state.grid * state.grid);
-    const stats = regionStats(projected.next, projected.body, state.grid, depth);
+    // Space safety needs the whole connected region; this depth is independent
+    // of how many future game moves a planner might simulate.
+    const stats = regionStats(projected.next, projected.body, state.grid);
+    const currentSpace = floodFill(state.snake[0], state.snake, state.grid).size;
+    const minimumReachable = minimumReachableSpace(state, projected.body.length);
+    const spaceSafe = stats.reachable >= minimumReachable;
     const currentDistance = distanceToFood(state.snake[0], state.food);
     const foodDistanceAfter = distanceToFood(projected.next, state.food);
     const foodGain = currentDistance - foodDistanceAfter;
-    const currentSpace = floodFill(state.snake[0], state.snake, state.grid, depth).size;
     const foodPriorityWeight = Math.max(Number(planner.foodWeight) || 0, Number(planner.foodPriorityWeight) || 220);
     let score = foodGain * foodPriorityWeight;
     score += stats.reachable * (planner.freedomWeight || 0);
@@ -209,6 +238,7 @@
     if (planner.borderApproachPenalty && distanceFromBorder === 0) score -= planner.borderApproachPenalty;
     return {
       direction, score, foodGain, foodDistanceAfter, towardFood: foodGain > 0, foodPriorityWeight,
+      spaceSafe, minimumReachableCells: minimumReachable, spaceMargin: stats.reachable - projected.body.length,
       ...stats
     };
   }
@@ -216,9 +246,14 @@
   function choose(state, preferred) {
     const candidates = safeDirections(state);
     if (!candidates.length) return { direction: state.direction, candidates: [], freedom: 0, rationale: 'no safe route' };
-    const ranked = candidates.map(direction => scoreMove(state, direction)).sort((a, b) => (a.direction === preferred ? -1 : b.direction === preferred ? 1 : b.score - a.score));
+    const ranked = candidates.map(direction => scoreMove(state, direction)).sort((a, b) => {
+      if (a.spaceSafe !== b.spaceSafe) return Number(b.spaceSafe) - Number(a.spaceSafe);
+      if (!a.spaceSafe && a.reachable !== b.reachable) return b.reachable - a.reachable;
+      if (a.score !== b.score) return b.score - a.score;
+      return Number(b.direction === preferred) - Number(a.direction === preferred);
+    });
     const winner = ranked[0];
-    return { direction: winner.direction, candidates: ranked, freedom: winner.reachable, rationale: `food ${winner.foodGain >= 0 ? '+' : ''}${winner.foodGain} · region ${winner.dominantRegion} · exits ${winner.exits}` };
+    return { direction: winner.direction, candidates: ranked, freedom: winner.reachable, rationale: `food ${winner.foodGain >= 0 ? '+' : ''}${winner.foodGain} · region ${winner.dominantRegion} · exits ${winner.exits} · space ${winner.reachable}/${winner.minimumReachableCells}` };
   }
 
   function buildDecisionState(state, preferred) {
@@ -228,6 +263,7 @@
     const boardCells = state.grid * state.grid;
     const currentRegion = floodFill(head, state.snake, state.grid);
     const foodDistance = distanceToFood(head, state.food);
+    const minimumCurrentSpace = minimumReachableSpace(state, state.snake.length);
     const moves = Object.fromEntries(legalDirections.map(direction => {
       const projected = project(state, direction);
       const stats = regionStats(projected.next, projected.body, state.grid);
@@ -237,6 +273,10 @@
       return [direction.toLowerCase(), {
         food_distance: foodDistanceAfter,
         space_ratio: Number((reachable.size / boardCells).toFixed(3)),
+        reachable_cells: reachable.size,
+        space_target_cells: minimumReachableSpace(state, projected.body.length),
+        space_margin: reachable.size - projected.body.length,
+        space_safe: reachable.size >= minimumReachableSpace(state, projected.body.length),
         tail_reachable: tailReachable,
         escape_routes: stats.exits,
         dead_end: stats.exits <= 1
@@ -245,16 +285,18 @@
     const moveValues = Object.values(moves);
     const space = Number((currentRegion.size / boardCells).toFixed(3));
     const escapeRoutes = regionStats(head, state.snake, state.grid).exits;
-    const bestFoodMove = moveValues.slice().sort((a, b) => a.food_distance - b.food_distance)[0];
-    const foodSafe = Boolean(bestFoodMove && bestFoodMove.space_ratio >= 0.3 && bestFoodMove.escape_routes >= 2 && !bestFoodMove.dead_end);
-    const tailSafe = moveValues.some(move => move.tail_reachable && move.space_ratio >= 0.3);
-    const spacePressure = Number(Math.min(1, Math.max(0, (1 - space) + Math.max(0, 2 - escapeRoutes) * 0.2)).toFixed(3));
+    const bestFoodMove = moveValues.filter(move => move.space_safe).slice().sort((a, b) => a.food_distance - b.food_distance)[0];
+    const foodSafe = Boolean(bestFoodMove && bestFoodMove.escape_routes >= 2 && !bestFoodMove.dead_end);
+    const tailSafe = moveValues.some(move => move.tail_reachable && move.space_safe);
+    const spaceShortfall = Math.max(0, (minimumCurrentSpace - currentRegion.size) / minimumCurrentSpace);
+    const spacePressure = Number(Math.min(1, Math.max(0, (1 - space) + Math.max(0, 2 - escapeRoutes) * 0.2, spaceShortfall)).toFixed(3));
     const spaceModeThreshold = 0.7;
     const spaceMode = spacePressure >= spaceModeThreshold;
     const spaceDirection = spaceMode ? oppositeCycleDirection(state, legalDirections) : '';
     if (spaceDirection) Object.entries(moves).forEach(([direction, move]) => { move.space_ratio = direction.toUpperCase() === spaceDirection ? 1 : 0; });
     return {
       snake: { length: state.snake.length },
+      planning: { minimum_reachable_space_ratio: minimumReachableSpaceRatio(state), minimum_reachable_cells: minimumCurrentSpace },
       food: { safe: foodSafe, distance: foodDistance },
       tactical: {
         space,
@@ -321,7 +363,7 @@
     'const nextCell = ' + nextCell.toString() + ';',
     'const inside = ' + inside.toString() + ';',
     'const contains = ' + contains.toString() + ';',
-              updateTurnState, projectedCw, project, safeDirections, floodFill, regionStats, futureTurnOptions, distanceToFood, borderDistance, oppositeCycleDirection, nearestBorderSide, startBorderCircuit, isOnBorder, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
+              updateTurnState, projectedCw, project, safeDirections, floodFill, minimumReachableSpaceRatio, minimumReachableSpace, regionStats, futureTurnOptions, distanceToFood, borderDistance, oppositeCycleDirection, nearestBorderSide, startBorderCircuit, isOnBorder, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
         'return { choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress };'
   ].map(part => typeof part === 'string' ? part : part.toString()).join('\n\n');
    window.SnakeCalculations = { VERSION: '1.0.0', choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress, source };

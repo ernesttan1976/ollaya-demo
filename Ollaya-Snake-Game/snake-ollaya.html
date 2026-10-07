@@ -213,7 +213,7 @@
     const ctx = canvas.getContext('2d');
     const grid = 16;
     const cell = canvas.width / grid;
-      const defaultRules = { version: '1.0.0', planner: { foodWeight: 100, foodPriorityWeight: 220, freedomWeight: 1 }, safety: { avoidWall: true, avoidBody: true }, evolution: { enabled: true, provider: 'openai', model: 'gpt-5.6-luna', endpoint: window.SNAKE_EVOLUTION_ENDPOINT || '/api/evolve-rules', onDeath: true } };
+      const defaultRules = { version: '1.0.0', planner: { foodWeight: 100, foodPriorityWeight: 220, freedomWeight: 1, minimumReachableSpaceRatio: 1.5 }, safety: { avoidWall: true, avoidBody: true }, evolution: { enabled: true, provider: 'openai', model: 'gpt-5.6-luna', endpoint: window.SNAKE_EVOLUTION_ENDPOINT || '/api/evolve-rules', onDeath: true } };
      const state = { grid, snake: [{x: 7, y: 8}, {x: 6, y: 8}, {x: 5, y: 8}], food: {x: 12, y: 8}, direction: 'RIGHT', nextDirection: 'RIGHT', borderCircuit: null, score: 0, paused: false, playing: false, ollaya: true, ollayaPending: false, loopRateHz: 2, activeMode: 'food', cycleWinding: 'clockwise', cycleSteps: 0, cycleLockUntil: 0, tick: 0, decisions: 0, pendingDeath: null, replayHistory: [], replayIndex: -1, rules: structuredClone(defaultRules), history: [structuredClone(defaultRules)], calculationsVersion: '1.0.0', calculationsSource: window.SnakeCalculations.source, calculationsHistory: [{ version: '1.0.0', source: window.SnakeCalculations.source }] };
     const vectors = { UP: {x: 0, y: -1}, DOWN: {x: 0, y: 1}, LEFT: {x: -1, y: 0}, RIGHT: {x: 1, y: 0} };
      const opposites = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
