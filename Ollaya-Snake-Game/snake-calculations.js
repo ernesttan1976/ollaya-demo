@@ -18,6 +18,17 @@
 
   function updateTurnState(state, direction) {
     if (state._lastScore == null) state._lastScore = state.score;
+    const reachableCells = floodFill(state.snake[0], state.snake, state.grid).size;
+    if (Number(state.tick) === 0 || !Number.isFinite(state._lastReachableCells)) {
+      state.spaceDeclineSteps = 0;
+      state.spaceTrend = 0;
+    } else {
+      state.spaceTrend = reachableCells - state._lastReachableCells;
+      state.spaceDeclineSteps = reachableCells < state._lastReachableCells
+        ? (Number(state.spaceDeclineSteps) || 0) + 1
+        : 0;
+    }
+    state._lastReachableCells = reachableCells;
     const previous = state.direction;
     if (previous !== direction) state.cw = (Number(state.cw) || 0) + (turnDelta[previous]?.[direction] || 0);
     state.previousDirection = previous;
@@ -289,7 +300,8 @@
     const foodSafe = Boolean(bestFoodMove && bestFoodMove.escape_routes >= 2 && !bestFoodMove.dead_end);
     const tailSafe = moveValues.some(move => move.tail_reachable && move.space_safe);
     const spaceShortfall = Math.max(0, (minimumCurrentSpace - currentRegion.size) / minimumCurrentSpace);
-    const spacePressure = Number(Math.min(1, Math.max(0, (1 - space) + Math.max(0, 2 - escapeRoutes) * 0.2, spaceShortfall)).toFixed(3));
+    const spaceEscapeTrigger = state.snake.length > 30 && Number(state.spaceDeclineSteps) >= 16;
+    const spacePressure = Number(Math.min(1, Math.max(spaceEscapeTrigger ? 0.7 : 0, (1 - space) + Math.max(0, 2 - escapeRoutes) * 0.2, spaceShortfall)).toFixed(3));
     const spaceModeThreshold = 0.7;
     const spaceMode = spacePressure >= spaceModeThreshold;
     const spaceDirection = spaceMode ? oppositeCycleDirection(state, legalDirections) : '';
@@ -301,6 +313,8 @@
       tactical: {
         space,
         space_trend: Number(state.spaceTrend || 0),
+        space_decline_steps: Number(state.spaceDeclineSteps || 0),
+        space_escape_trigger: spaceEscapeTrigger,
         escape_routes: escapeRoutes,
         escape_trend: Number(state.escapeTrend || 0),
         pressure: spacePressure,

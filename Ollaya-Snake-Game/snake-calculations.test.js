@@ -72,3 +72,49 @@ test('when every move misses the target, only moves preserving the most space re
   assert.ok(Object.values(restrictive.moves).every(move => move.reachable_cells === largestRegion));
   assert.ok(Object.values(restrictive.moves).every(move => move.space_safe === false));
 });
+
+test('turn tracking counts only consecutive decreases in flood-fill space', () => {
+  const state = makeState({ snake: [{ x: 3, y: 3 }], tick: 0 });
+  calculations.updateTurnState(state, 'RIGHT');
+
+  for (let step = 1; step <= 16; step++) {
+    state.snake.push({ x: (step - 1) % 8, y: Math.floor((step - 1) / 8) });
+    state.tick = step;
+    calculations.updateTurnState(state, 'RIGHT');
+    assert.equal(state.spaceDeclineSteps, step);
+  }
+
+  state.snake.pop();
+  state.tick = 17;
+  calculations.updateTurnState(state, 'RIGHT');
+  assert.equal(state.spaceDeclineSteps, 0);
+});
+
+test('a long snake with 16 consecutive space declines triggers escape pressure', () => {
+  const longSnake = [
+    { x: 3, y: 3 },
+    ...Array.from({ length: 30 }, () => ({ x: 2, y: 3 }))
+  ];
+  const decision = calculations.buildDecisionState(makeState({
+    snake: longSnake,
+    spaceDeclineSteps: 16
+  }), 'UP');
+
+  assert.equal(decision.tactical.space_escape_trigger, true);
+  assert.equal(decision.tactical.pressure >= 0.7, true);
+  assert.equal(decision.tactical.space_mode, true);
+});
+
+test('space decline escape pressure requires both a long snake and 16 declining steps', () => {
+  const shortSnake = calculations.buildDecisionState(makeState({
+    snake: Array.from({ length: 30 }, () => ({ x: 2, y: 3 })),
+    spaceDeclineSteps: 16
+  }), 'UP');
+  const earlyTrend = calculations.buildDecisionState(makeState({
+    snake: Array.from({ length: 31 }, () => ({ x: 2, y: 3 })),
+    spaceDeclineSteps: 15
+  }), 'UP');
+
+  assert.equal(shortSnake.tactical.space_escape_trigger, false);
+  assert.equal(earlyTrend.tactical.space_escape_trigger, false);
+});
