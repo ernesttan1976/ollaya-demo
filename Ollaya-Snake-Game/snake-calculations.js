@@ -60,16 +60,22 @@
       return {
         direction,
         reachable: floodFill(projected.next, projected.body, state.grid).size,
-        minimumReachable: minimumReachableSpace(state, projected.body.length)
+        minimumReachable: minimumReachableSpace(state, projected.body.length),
+        keepsWallBuffer: borderDistance(state, projected.next) >= 1
       };
     });
     const spaceSafe = measured.filter(move => move.reachable >= move.minimumReachable);
-    if (spaceSafe.length) return spaceSafe.map(move => move.direction);
+    let selected = spaceSafe;
 
-    // If the target is impossible this turn, keep the option(s) that preserve
-    // the largest connected open region instead of returning no moves.
-    const largestRegion = Math.max(...measured.map(move => move.reachable));
-    return measured.filter(move => move.reachable === largestRegion).map(move => move.direction);
+    if (!selected.length) {
+      // If the target is impossible this turn, keep the option(s) that preserve
+      // the largest connected open region instead of returning no moves.
+      const largestRegion = Math.max(...measured.map(move => move.reachable));
+      selected = measured.filter(move => move.reachable === largestRegion);
+    }
+
+    const buffered = selected.filter(move => move.keepsWallBuffer);
+    return (buffered.length ? buffered : selected).map(move => move.direction);
   }
 
   function floodFill(start, body, grid, maxDepth = Infinity) {
@@ -129,17 +135,18 @@
   const clockwiseSide = { TOP: 'RIGHT', RIGHT: 'BOTTOM', BOTTOM: 'LEFT', LEFT: 'TOP' };
   function nearestBorderSide(state) {
     const head = state.snake[0];
-    const distances = { TOP: head.y, RIGHT: state.grid - 1 - head.x, BOTTOM: state.grid - 1 - head.y, LEFT: head.x };
+    const innerEdge = state.grid - 2;
+    const distances = { TOP: Math.abs(head.y - 1), RIGHT: Math.abs(innerEdge - head.x), BOTTOM: Math.abs(innerEdge - head.y), LEFT: Math.abs(head.x - 1) };
     return Object.keys(distances).sort((a, b) => distances[a] - distances[b])[0];
   }
 
   function startBorderCircuit(state) {
-    const wallLength = Math.max(1, 4 * (state.grid - 1));
+    const wallLength = Math.max(1, 4 * (state.grid - 3));
     return { active: true, phase: 'to_border', targetSide: nearestBorderSide(state), currentSide: null, sidesTraversed: 0, wallSteps: 0, wallLengthsCompleted: 0, wallTargetSteps: wallLength * 2 };
   }
 
-  function isOnBorder(cell, grid) {
-    return cell.x === 0 || cell.y === 0 || cell.x === grid - 1 || cell.y === grid - 1;
+  function isOnBorderLane(cell, grid) {
+    return cell.x === 1 || cell.y === 1 || cell.x === grid - 2 || cell.y === grid - 2;
   }
 
   // A score increase is the single source of truth for entering cycle mode.
@@ -154,9 +161,9 @@
     const route = state.borderCircuit;
     if (!route?.active || route.phase !== 'border_route' || !previousHead) return route;
     const head = state.snake[0];
-    if (isOnBorder(previousHead, state.grid) && isOnBorder(head, state.grid) && (head.x !== previousHead.x || head.y !== previousHead.y)) {
+    if (isOnBorderLane(previousHead, state.grid) && isOnBorderLane(head, state.grid) && (head.x !== previousHead.x || head.y !== previousHead.y)) {
       route.wallSteps = (route.wallSteps || 0) + 1;
-      const wallLength = Math.max(1, 4 * (state.grid - 1));
+      const wallLength = Math.max(1, 4 * (state.grid - 3));
       route.wallLengthsCompleted = Math.floor(route.wallSteps / wallLength);
       if (route.wallSteps >= (route.wallTargetSteps || wallLength * 2)) {
         route.active = false;
@@ -167,14 +174,14 @@
   }
 
   function borderSide(cell, grid, fallback) {
-    if (fallback === 'TOP' && cell.y === 0) return 'TOP';
-    if (fallback === 'RIGHT' && cell.x === grid - 1) return 'RIGHT';
-    if (fallback === 'BOTTOM' && cell.y === grid - 1) return 'BOTTOM';
-    if (fallback === 'LEFT' && cell.x === 0) return 'LEFT';
-    if (cell.y === 0) return 'TOP';
-    if (cell.x === grid - 1) return 'RIGHT';
-    if (cell.y === grid - 1) return 'BOTTOM';
-    if (cell.x === 0) return 'LEFT';
+    if (fallback === 'TOP' && cell.y === 1) return 'TOP';
+    if (fallback === 'RIGHT' && cell.x === grid - 2) return 'RIGHT';
+    if (fallback === 'BOTTOM' && cell.y === grid - 2) return 'BOTTOM';
+    if (fallback === 'LEFT' && cell.x === 1) return 'LEFT';
+    if (cell.y === 1) return 'TOP';
+    if (cell.x === grid - 2) return 'RIGHT';
+    if (cell.y === grid - 2) return 'BOTTOM';
+    if (cell.x === 1) return 'LEFT';
     return null;
   }
 
@@ -190,15 +197,18 @@
         route.sidesTraversed = 0;
       } else {
         const target = route.targetSide;
-        const direction = target === 'TOP' ? 'UP' : target === 'RIGHT' ? 'RIGHT' : target === 'BOTTOM' ? 'DOWN' : 'LEFT';
+        const direction = target === 'TOP' ? (head.y > 1 ? 'UP' : 'DOWN')
+          : target === 'RIGHT' ? (head.x < state.grid - 2 ? 'RIGHT' : 'LEFT')
+            : target === 'BOTTOM' ? (head.y < state.grid - 2 ? 'DOWN' : 'UP')
+              : (head.x > 1 ? 'LEFT' : 'RIGHT');
         return { direction, route };
       }
     }
     const currentSide = route.currentSide || side;
-    const atEnd = (currentSide === 'TOP' && head.x === state.grid - 1) ||
-      (currentSide === 'RIGHT' && head.y === state.grid - 1) ||
-      (currentSide === 'BOTTOM' && head.x === 0) ||
-      (currentSide === 'LEFT' && head.y === 0);
+    const atEnd = (currentSide === 'TOP' && head.x === state.grid - 2) ||
+      (currentSide === 'RIGHT' && head.y === state.grid - 2) ||
+      (currentSide === 'BOTTOM' && head.x === 1) ||
+      (currentSide === 'LEFT' && head.y === 1);
     if (atEnd) {
       route.sidesTraversed += 1;
       route.currentSide = clockwiseSide[currentSide];
@@ -377,7 +387,7 @@
     'const nextCell = ' + nextCell.toString() + ';',
     'const inside = ' + inside.toString() + ';',
     'const contains = ' + contains.toString() + ';',
-              updateTurnState, projectedCw, project, safeDirections, floodFill, minimumReachableSpaceRatio, minimumReachableSpace, regionStats, futureTurnOptions, distanceToFood, borderDistance, oppositeCycleDirection, nearestBorderSide, startBorderCircuit, isOnBorder, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
+              updateTurnState, projectedCw, project, safeDirections, floodFill, minimumReachableSpaceRatio, minimumReachableSpace, regionStats, futureTurnOptions, distanceToFood, borderDistance, oppositeCycleDirection, nearestBorderSide, startBorderCircuit, isOnBorderLane, advanceBorderProgress, borderCircuitPreferred, scoreMove, choose, buildDecisionState, buildInput,
         'return { choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress };'
   ].map(part => typeof part === 'string' ? part : part.toString()).join('\n\n');
    window.SnakeCalculations = { VERSION: '1.0.0', choose, safeDirections, buildInput, buildDecisionState, updateTurnState, startBorderCircuit, advanceBorderProgress, source };

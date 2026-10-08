@@ -118,3 +118,21 @@ test('space decline escape pressure requires both a long snake and 16 declining 
   assert.equal(shortSnake.tactical.space_escape_trigger, false);
   assert.equal(earlyTrend.tactical.space_escape_trigger, false);
 });
+
+test('safe moves keep the head one cell away from a wall whenever possible', () => {
+  const state = makeState({
+    snake: [{ x: 2, y: 1 }, { x: 2, y: 2 }, { x: 2, y: 3 }],
+    direction: 'UP'
+  });
+
+  assert.deepEqual(Array.from(calculations.safeDirections(state)), ['LEFT', 'RIGHT']);
+});
+
+test('the wall buffer yields when every available safe move is beside a wall', () => {
+  const state = makeState({
+    snake: [{ x: 1, y: 1 }, { x: 1, y: 2 }, { x: 1, y: 3 }],
+    direction: 'LEFT'
+  });
+
+  assert.deepEqual(Array.from(calculations.safeDirections(state)), ['UP', 'LEFT']);
+});
