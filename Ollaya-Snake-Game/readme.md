@@ -56,7 +56,7 @@ This keeps the fast loop bounded and inspectable: **state → Ollaya → semanti
 
 Before applying Ollaya's mode, the local controller flood-fills the full open region for each legal next move. By default, it keeps moves with at least `1.5 × projected snake length` reachable cells; if none meet that target, it keeps the move(s) with the most reachable space. Adjust `planner.minimumReachableSpaceRatio` in the rules editor to tune the margin. This is a connected-space safety check, not a multi-turn movement horizon.
 
-Among moves that meet the space-safety target, the controller prefers positions at least one cell from every wall. It relaxes that buffer only when no equally space-safe move can preserve it. The post-food perimeter route follows this one-cell-inset lane as well.
+Among moves that meet the space-safety target, the controller prefers positions at least one cell from every wall. A space-safe move that advances toward food is the sole exception and may approach or reach the wall. The post-food perimeter route follows the one-cell-inset lane.
 
 ### Slower rule-evolution path
 

@@ -57,11 +57,13 @@
 
     const measured = legal.map(direction => {
       const projected = project(state, direction);
+      const foodGain = distanceToFood(state.snake[0], state.food) - distanceToFood(projected.next, state.food);
       return {
         direction,
         reachable: floodFill(projected.next, projected.body, state.grid).size,
         minimumReachable: minimumReachableSpace(state, projected.body.length),
-        keepsWallBuffer: borderDistance(state, projected.next) >= 1
+        keepsWallBuffer: borderDistance(state, projected.next) >= 1,
+        foodGain
       };
     });
     const spaceSafe = measured.filter(move => move.reachable >= move.minimumReachable);
@@ -75,7 +77,10 @@
     }
 
     const buffered = selected.filter(move => move.keepsWallBuffer);
-    return (buffered.length ? buffered : selected).map(move => move.direction);
+    const foodApproaches = selected.filter(move => !move.keepsWallBuffer && move.foodGain > 0);
+    return (buffered.length || foodApproaches.length
+      ? [...buffered, ...foodApproaches]
+      : selected).map(move => move.direction);
   }
 
   function floodFill(start, body, grid, maxDepth = Infinity) {

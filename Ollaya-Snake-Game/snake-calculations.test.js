@@ -136,3 +136,16 @@ test('the wall buffer yields when every available safe move is beside a wall', (
 
   assert.deepEqual(Array.from(calculations.safeDirections(state)), ['UP', 'LEFT']);
 });
+
+test('a space-safe move toward food may break the wall buffer', () => {
+  const state = makeState({
+    snake: [{ x: 1, y: 2 }, { x: 1, y: 3 }, { x: 2, y: 3 }],
+    food: { x: 0, y: 2 },
+    direction: 'UP'
+  });
+
+  const directions = Array.from(calculations.safeDirections(state));
+  assert.ok(directions.includes('LEFT'));
+  assert.ok(directions.includes('UP'));
+  assert.equal(calculations.choose(state, 'UP').direction, 'LEFT');
+});
